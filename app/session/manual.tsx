@@ -20,7 +20,7 @@ function parseTime(hhmm: string): number | null {
   if (parts.length !== 2) return null;
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
-  if (isNaN(h) || isNaN(m) || m < 0 || m > 59) return null;
+  if (isNaN(h) || isNaN(m) || h < 0 || m < 0 || m > 59) return null;
   return h * 3600 + m * 60;
 }
 
@@ -59,8 +59,12 @@ export default function ManualSessionScreen() {
       return;
     }
     const durationSeconds = parseTime(timeStr);
-    if (durationSeconds === null || durationSeconds <= 0) {
+    if (durationSeconds === null) {
       setError('Enter time as H:MM or HH:MM');
+      return;
+    }
+    if (durationSeconds <= 0) {
+      setError('Time must be greater than 0');
       return;
     }
     if (!selectedBook) return;
