@@ -27,12 +27,17 @@ describe('SignupScreen', () => {
     expect(getByPlaceholderText('Password')).toBeTruthy();
   });
 
-  it('calls signUp with all three fields on submit', async () => {
+  it('renders a Create Account button', () => {
+    const { getByText } = render(<SignupScreen />);
+    expect(getByText('Create Account')).toBeTruthy();
+  });
+
+  it('calls signUp with trimmed email and username on submit', async () => {
     mockSignUp.mockResolvedValue({ error: null });
     const { getByPlaceholderText, getByText } = render(<SignupScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Username'), 'isabelle');
-    fireEvent.changeText(getByPlaceholderText('Email'), 'isabelle@example.com');
+    fireEvent.changeText(getByPlaceholderText('Username'), '  isabelle  ');
+    fireEvent.changeText(getByPlaceholderText('Email'), '  isabelle@example.com  ');
     fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
     fireEvent.press(getByText('Create Account'));
 
