@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/auth';
 import { searchBooks, upsertBook, type BookSearchResult } from '@/lib/books';
 import { addToShelf } from '@/lib/userBooks';
 import { Shelf } from '@/types/database';
+import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SHELF_OPTIONS = ['Cancel', 'Reading', 'Want to Read', 'Read', 'Did Not Finish'] as const;
 const SHELF_KEYS: (Shelf | null)[] = [null, 'reading', 'want', 'read', 'dnf'];
@@ -29,7 +30,6 @@ export default function SearchScreen() {
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // cleanup on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -88,7 +88,7 @@ export default function SearchScreen() {
         <TextInput
           style={styles.input}
           placeholder="Search by title or author..."
-          placeholderTextColor="#555"
+          placeholderTextColor={Colors.textTertiary}
           value={query}
           onChangeText={onChangeText}
           autoFocus
@@ -99,7 +99,7 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      {searching && <ActivityIndicator color="#f0c040" style={styles.spinner} />}
+      {searching && <ActivityIndicator color={Colors.primary} style={styles.spinner} />}
 
       <FlatList
         data={results}
@@ -127,31 +127,45 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f0f' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
   input: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
-    color: '#fff',
-    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    color: Colors.textPrimary,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
+    ...Shadow.card,
   },
-  cancel: { color: '#f0c040', fontSize: 15 },
-  spinner: { marginVertical: 16 },
-  list: { padding: 16, gap: 12 },
+  cancel: { color: Colors.primary, fontSize: 15, fontWeight: '600' },
+  spinner: { marginVertical: Spacing.md },
+  list: { padding: Spacing.md, gap: Spacing.sm },
   result: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    padding: 12,
-    gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.md,
+    ...Shadow.card,
   },
-  cover: { width: 50, height: 75, borderRadius: 4 },
-  coverPlaceholder: { width: 50, height: 75, borderRadius: 4, backgroundColor: '#2a2a2a' },
+  cover: { width: 50, height: 75, borderRadius: Radius.sm },
+  coverPlaceholder: {
+    width: 50,
+    height: 75,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.border,
+  },
   info: { flex: 1, gap: 4, justifyContent: 'center' },
-  title: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  author: { color: '#888', fontSize: 13 },
-  pages: { color: '#555', fontSize: 12 },
+  title: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600' },
+  author: { color: Colors.textSecondary, fontSize: 13 },
+  pages: { color: Colors.textTertiary, fontSize: 12 },
 });
