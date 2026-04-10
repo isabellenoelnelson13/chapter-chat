@@ -47,6 +47,10 @@ beforeEach(() => {
   );
 });
 
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('SearchScreen', () => {
   it('renders search input', () => {
     render(<SearchScreen />);
@@ -63,7 +67,6 @@ describe('SearchScreen', () => {
     );
     await act(async () => { jest.advanceTimersByTime(500); });
     await waitFor(() => expect(screen.getByText('The Hobbit')).toBeTruthy());
-    jest.useRealTimers();
   });
 
   it('clears results when input is cleared', async () => {
@@ -76,7 +79,6 @@ describe('SearchScreen', () => {
     await waitFor(() => screen.getByText('The Hobbit'));
     fireEvent.changeText(input, '');
     expect(screen.queryByText('The Hobbit')).toBeNull();
-    jest.useRealTimers();
   });
 
   it('shows action sheet when result is tapped', async () => {
@@ -91,7 +93,6 @@ describe('SearchScreen', () => {
     await waitFor(() => screen.getByText('The Hobbit'));
     fireEvent.press(screen.getByText('The Hobbit'));
     expect(ActionSheetIOS.showActionSheetWithOptions).toHaveBeenCalled();
-    jest.useRealTimers();
   });
 
   it('upserts book and adds to shelf then navigates back', async () => {
@@ -108,6 +109,5 @@ describe('SearchScreen', () => {
     await waitFor(() => expect(upsertBook).toHaveBeenCalledWith(mockResult));
     expect(addToShelf).toHaveBeenCalledWith('user-1', 'book-uuid', 'reading');
     expect(mockBack).toHaveBeenCalled();
-    jest.useRealTimers();
   });
 });

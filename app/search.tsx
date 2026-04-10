@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   ActionSheetIOS,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,13 +23,21 @@ const SHELF_KEYS: (Shelf | null)[] = [null, 'reading', 'want', 'read', 'dnf'];
 
 export default function SearchScreen() {
   const { session } = useAuth();
-  const userId = session!.user.id;
   const router = useRouter();
-
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  if (!session) return null;
+  const userId = session.user.id;
 
   const onChangeText = (text: string) => {
     setQuery(text);
@@ -49,12 +58,17 @@ export default function SearchScreen() {
   };
 
   const addBook = async (book: BookSearchResult, shelf: Shelf) => {
-    const bookId = await upsertBook(book);
-    await addToShelf(userId, bookId, shelf);
-    router.back();
+    try {
+      const bookId = await upsertBook(book);
+      await addToShelf(userId, bookId, shelf);
+      router.back();
+    } catch {
+      Alert.alert('Error', 'Could not add book. Please try again.');
+    }
   };
 
   const showShelfPicker = (book: BookSearchResult) => {
+    // ActionSheetIOS is iOS-only — this app targets iOS exclusively
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options: [...SHELF_OPTIONS],
