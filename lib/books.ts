@@ -35,7 +35,7 @@ function volumeToBook(volume: any): BookSearchResult {
   const info = volume.volumeInfo ?? {};
   const thumbnail: string | null = info.imageLinks?.thumbnail ?? null;
   return {
-    google_books_id: volume.id,
+    google_books_id: volume.id ?? '',
     title: info.title ?? 'Unknown Title',
     author: (info.authors ?? [])[0] ?? 'Unknown Author',
     cover_url: thumbnail ? thumbnail.replace('http://', 'https://') : null,
@@ -61,5 +61,6 @@ export async function upsertBook(book: BookSearchResult): Promise<string> {
     .select('id')
     .single();
   if (error) throw error;
+  if (!data) throw new Error('upsertBook: no data returned from Supabase');
   return data.id;
 }

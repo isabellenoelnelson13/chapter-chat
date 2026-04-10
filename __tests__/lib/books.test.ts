@@ -113,7 +113,14 @@ describe('fetchBookByGoogleId', () => {
       json: async () => fakeVolume,
     });
     const result = await fetchBookByGoogleId('gbk123');
-    expect(result?.title).toBe('The Hobbit');
+    expect(result).toEqual({
+      google_books_id: 'gbk123',
+      title: 'The Hobbit',
+      author: 'J.R.R. Tolkien',
+      cover_url: 'https://books.google.com/cover.jpg',
+      page_count: 310,
+      genres: ['Fantasy'],
+    });
   });
 });
 
