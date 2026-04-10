@@ -81,8 +81,8 @@ describe('HomeScreen', () => {
   it('navigates to session screen on book card tap', async () => {
     (getCurrentBook as jest.Mock).mockResolvedValue(mockCurrentBook);
     render(<HomeScreen />);
-    await waitFor(() => screen.getByText('Start Reading'));
-    fireEvent.press(screen.getByText('Start Reading'));
+    await waitFor(() => screen.getByText('Start Reading Session'));
+    fireEvent.press(screen.getByText('Start Reading Session'));
     expect(mockPush).toHaveBeenCalledWith('/session/book-1');
   });
 
