@@ -54,7 +54,12 @@ export default function ManualSessionScreen() {
     setError('');
     const sp = parseInt(startPage, 10);
     const ep = parseInt(endPage, 10);
-    if (isNaN(sp) || isNaN(ep) || ep <= sp) {
+    const pageCount = selectedBook?.book.page_count;
+    if (
+      isNaN(sp) || isNaN(ep) ||
+      sp < 0 || ep <= sp ||
+      (pageCount !== null && pageCount !== undefined && ep > pageCount)
+    ) {
       setError('End page must be greater than start page');
       return;
     }
@@ -124,7 +129,10 @@ export default function ManualSessionScreen() {
                   setStartPage(String(book.current_page));
                 }}
               >
-                <Text style={styles.bookChipText} numberOfLines={1}>{book.book.title}</Text>
+                <Text
+                  style={[styles.bookChipText, selectedBook?.id === book.id && styles.bookChipTextActive]}
+                  numberOfLines={1}
+                >{book.book.title}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -196,6 +204,7 @@ const styles = StyleSheet.create({
   },
   bookChipActive: { backgroundColor: '#f0c040' },
   bookChipText: { color: '#fff', fontSize: 13 },
+  bookChipTextActive: { color: '#0f0f0f' },
   row: { flexDirection: 'row', gap: 12 },
   halfField: { flex: 1, gap: 6 },
   field: { gap: 6 },

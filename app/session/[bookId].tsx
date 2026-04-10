@@ -34,6 +34,7 @@ export default function SessionScreen() {
   const [startPage, setStartPage] = useState('');
   const [endPage, setEndPage] = useState('');
   const [seconds, setSeconds] = useState(0);
+  const [saveError, setSaveError] = useState('');
   const startedAtRef = useRef<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -75,12 +76,21 @@ export default function SessionScreen() {
     const sp = parseInt(startPage, 10);
     const ep = parseInt(endPage, 10);
     const pageCount = userBook?.book.page_count;
+    setSaveError('');
     if (
       isNaN(sp) || isNaN(ep) ||
       sp < 0 || ep <= sp ||
       (pageCount !== null && pageCount !== undefined && ep > pageCount) ||
       !userBook
-    ) return;
+    ) {
+      setSaveError('Check your page numbers');
+      return;
+    }
+
+    if (seconds === 0) {
+      setSaveError('Read at least a moment before saving');
+      return;
+    }
 
     try {
       await createSession({
@@ -133,6 +143,9 @@ export default function SessionScreen() {
           <TouchableOpacity style={styles.primaryBtn} onPress={startTimer}>
             <Text style={styles.primaryBtnText}>Start Reading</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/session/manual')}>
+            <Text style={styles.logManuallyText}>Log manually instead</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -168,6 +181,7 @@ export default function SessionScreen() {
             onChangeText={setEndPage}
             keyboardType="number-pad"
           />
+          {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
           <TouchableOpacity style={styles.primaryBtn} onPress={saveSession}>
             <Text style={styles.primaryBtnText}>Save Session</Text>
           </TouchableOpacity>
@@ -209,4 +223,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  logManuallyText: { color: '#888', fontSize: 13, textAlign: 'center', marginTop: 4 },
+  errorText: { color: '#ff4444', fontSize: 13 },
 });

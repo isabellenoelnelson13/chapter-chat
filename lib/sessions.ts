@@ -24,6 +24,8 @@ export async function createSession(params: {
     started_at: startedAt.toISOString(),
   };
 
+  // reading_sessions has Update: never in database types, which causes TS2769
+  // when chaining off .from(). The `as any` cast is intentional here.
   const { error } = await (supabase.from('reading_sessions') as any).insert(insert);
   if (error) throw error;
 
