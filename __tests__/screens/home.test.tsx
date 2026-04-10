@@ -34,6 +34,7 @@ jest.mock('@/lib/userBooks', () => ({
 
 jest.mock('@/lib/stats', () => ({
   getTodayStats: jest.fn().mockResolvedValue({ pagesRead: 0, timeSeconds: 0, streak: 0 }),
+  estimateDaysRemaining: jest.fn().mockReturnValue(null),
 }));
 
 const mockPush = jest.fn();

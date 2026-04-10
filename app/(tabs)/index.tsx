@@ -29,19 +29,25 @@ function formatTime(seconds: number): string {
 
 export default function HomeScreen() {
   const { session } = useAuth();
-  const userId = session!.user.id;
   const router = useRouter();
+
+  if (!session) return null;
+  const userId = session.user.id;
 
   const [currentBook, setCurrentBook] = useState<UserBookWithBook | null>(null);
   const [stats, setStats] = useState<TodayStats>({ pagesRead: 0, timeSeconds: 0, streak: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getCurrentBook(userId), getTodayStats(userId)]).then(([book, todayStats]) => {
-      setCurrentBook(book);
-      setStats(todayStats);
-      setLoading(false);
-    });
+    Promise.all([getCurrentBook(userId), getTodayStats(userId)])
+      .then(([book, todayStats]) => {
+        setCurrentBook(book);
+        setStats(todayStats);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, [userId]);
 
   const dateStr = new Date().toLocaleDateString('en-US', {
@@ -63,7 +69,7 @@ export default function HomeScreen() {
       ? stats.pagesRead
       : 0;
   const daysLeft =
-    currentBook?.book.page_count && typeof estimateDaysRemaining === 'function'
+    currentBook?.book.page_count
       ? estimateDaysRemaining(pacePerDay, currentBook.current_page, currentBook.book.page_count)
       : null;
 
