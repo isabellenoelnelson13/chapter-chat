@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function HomeScreen() {
+export default function SocialScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Home — Coming in Phase 2</Text>
+      <Text style={styles.text}>Social — Coming in Phase 3</Text>
     </View>
   );
 }
