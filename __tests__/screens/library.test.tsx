@@ -42,7 +42,7 @@ describe('LibraryScreen', () => {
     render(<LibraryScreen />);
     await waitFor(() => {
       expect(screen.getByText('Reading')).toBeTruthy();
-      expect(screen.getByText('Want')).toBeTruthy();
+      expect(screen.getByText('Want to Read')).toBeTruthy();
       expect(screen.getByText('Read')).toBeTruthy();
       expect(screen.getByText('DNF')).toBeTruthy();
     });
@@ -65,7 +65,7 @@ describe('LibraryScreen', () => {
 
   it('loads Want shelf when Want tab is tapped', async () => {
     render(<LibraryScreen />);
-    fireEvent.press(screen.getByText('Want'));
+    fireEvent.press(screen.getByText('Want to Read'));
     await waitFor(() => {
       expect(getShelf).toHaveBeenCalledWith('user-1', 'want');
     });
@@ -74,7 +74,7 @@ describe('LibraryScreen', () => {
   it('navigates to search when + button is pressed', async () => {
     render(<LibraryScreen />);
     await waitFor(() => screen.getByText('No books here yet'));
-    fireEvent.press(screen.getByText('+'));
+    fireEvent.press(screen.getByTestId('add-book-btn'));
     expect(mockPush).toHaveBeenCalledWith('/search');
   });
 
