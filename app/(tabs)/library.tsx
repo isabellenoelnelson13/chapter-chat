@@ -80,7 +80,9 @@ export default function LibraryScreen() {
 }
 
 function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
-  const progress = book.book.page_count ? book.current_page / book.book.page_count : 0;
+  const progress = book.book.page_count
+    ? Math.min(1, book.current_page / book.book.page_count)
+    : 0;
 
   return (
     <View style={styles.card}>
@@ -98,7 +100,7 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
           </View>
         )}
         {shelf === 'read' && book.rating !== null && (
-          <Text style={styles.rating}>{'★'.repeat(book.rating)}{'☆'.repeat(5 - book.rating)}</Text>
+          <Text style={styles.rating}>{'★'.repeat(Math.min(5, Math.max(0, book.rating ?? 0)))}{'☆'.repeat(5 - Math.min(5, Math.max(0, book.rating ?? 0)))}</Text>
         )}
       </View>
     </View>
