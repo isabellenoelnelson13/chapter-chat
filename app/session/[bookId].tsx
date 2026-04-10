@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getUserBook, type UserBookWithBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
+import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
 
 type Phase = 'setup' | 'running' | 'paused' | 'finish';
 
@@ -25,7 +27,6 @@ function formatTimer(seconds: number): string {
 export default function SessionScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const { session } = useAuth();
-  const userId = session!.user.id;
   const router = useRouter();
 
   const [userBook, setUserBook] = useState<UserBookWithBook | null>(null);
@@ -37,6 +38,8 @@ export default function SessionScreen() {
   const [saveError, setSaveError] = useState('');
   const startedAtRef = useRef<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const userId = session!.user.id;
 
   useEffect(() => {
     getUserBook(userId, bookId)
@@ -77,6 +80,7 @@ export default function SessionScreen() {
     const ep = parseInt(endPage, 10);
     const pageCount = userBook?.book.page_count;
     setSaveError('');
+
     if (
       isNaN(sp) || isNaN(ep) ||
       sp < 0 || ep <= sp ||
@@ -86,7 +90,6 @@ export default function SessionScreen() {
       setSaveError('Check your page numbers');
       return;
     }
-
     if (seconds === 0) {
       setSaveError('Read at least a moment before saving');
       return;
@@ -111,7 +114,7 @@ export default function SessionScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#f0c040" />
+        <ActivityIndicator color={Colors.primary} />
       </View>
     );
   }
@@ -119,7 +122,8 @@ export default function SessionScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Text style={styles.backText}>← Back</Text>
+        <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
+        <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
       {userBook && (
@@ -135,7 +139,7 @@ export default function SessionScreen() {
           <TextInput
             style={styles.input}
             placeholder="Starting page"
-            placeholderTextColor="#555"
+            placeholderTextColor={Colors.textTertiary}
             value={startPage}
             onChangeText={setStartPage}
             keyboardType="number-pad"
@@ -176,7 +180,7 @@ export default function SessionScreen() {
           <TextInput
             style={styles.input}
             placeholder="Ending page"
-            placeholderTextColor="#555"
+            placeholderTextColor={Colors.textTertiary}
             value={endPage}
             onChangeText={setEndPage}
             keyboardType="number-pad"
@@ -192,37 +196,61 @@ export default function SessionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f0f', padding: 24 },
-  center: { flex: 1, backgroundColor: '#0f0f0f', justifyContent: 'center', alignItems: 'center' },
-  backBtn: { marginBottom: 8 },
-  backText: { color: '#888', fontSize: 15 },
-  bookTitle: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 40 },
+  container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.lg },
+  center: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: Spacing.sm },
+  backText: { color: Colors.textSecondary, fontSize: 15 },
+  bookTitle: {
+    color: Colors.primary,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: Spacing.xl,
+  },
   timerArea: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  timer: { color: '#f0c040', fontSize: 72, fontWeight: '200', fontVariant: ['tabular-nums'] },
-  controls: { gap: 12 },
+  timer: {
+    color: Colors.primary,
+    fontSize: 72,
+    fontWeight: '200',
+    fontVariant: ['tabular-nums'],
+  },
+  controls: { gap: Spacing.sm },
   input: {
-    backgroundColor: '#1a1a1a',
-    color: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 16,
+    backgroundColor: Colors.surface,
+    color: Colors.textPrimary,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     fontSize: 16,
+    ...Shadow.card,
   },
   primaryBtn: {
-    backgroundColor: '#f0c040',
-    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  primaryBtnText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 10,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
     paddingVertical: 16,
     alignItems: 'center',
+    backgroundColor: Colors.surface,
   },
-  secondaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  logManuallyText: { color: '#888', fontSize: 13, textAlign: 'center', marginTop: 4 },
-  errorText: { color: '#ff4444', fontSize: 13 },
+  secondaryBtnText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
+  logManuallyText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  errorText: { color: Colors.error, fontSize: 13 },
 });

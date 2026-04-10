@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
+import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
 
 function parseTime(hhmm: string): number | null {
   const parts = hhmm.split(':');
@@ -93,7 +95,7 @@ export default function ManualSessionScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#f0c040" />
+        <ActivityIndicator color={Colors.primary} />
       </View>
     );
   }
@@ -102,7 +104,8 @@ export default function ManualSessionScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backText}>← Back</Text>
+          <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
+          <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
         <Text style={styles.heading}>Log a Session</Text>
@@ -130,9 +133,14 @@ export default function ManualSessionScreen() {
                 }}
               >
                 <Text
-                  style={[styles.bookChipText, selectedBook?.id === book.id && styles.bookChipTextActive]}
+                  style={[
+                    styles.bookChipText,
+                    selectedBook?.id === book.id && styles.bookChipTextActive,
+                  ]}
                   numberOfLines={1}
-                >{book.book.title}</Text>
+                >
+                  {book.book.title}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -144,7 +152,7 @@ export default function ManualSessionScreen() {
             <TextInput
               style={styles.input}
               placeholder="Start page"
-              placeholderTextColor="#555"
+              placeholderTextColor={Colors.textTertiary}
               value={startPage}
               onChangeText={setStartPage}
               keyboardType="number-pad"
@@ -155,7 +163,7 @@ export default function ManualSessionScreen() {
             <TextInput
               style={styles.input}
               placeholder="End page"
-              placeholderTextColor="#555"
+              placeholderTextColor={Colors.textTertiary}
               value={endPage}
               onChangeText={setEndPage}
               keyboardType="number-pad"
@@ -168,7 +176,7 @@ export default function ManualSessionScreen() {
           <TextInput
             style={styles.input}
             placeholder="HH:MM"
-            placeholderTextColor="#555"
+            placeholderTextColor={Colors.textTertiary}
             value={timeStr}
             onChangeText={setTimeStr}
           />
@@ -185,44 +193,54 @@ export default function ManualSessionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f0f' },
-  center: { flex: 1, backgroundColor: '#0f0f0f', justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 24, gap: 20 },
-  backBtn: {},
-  backText: { color: '#888', fontSize: 15 },
-  heading: { color: '#fff', fontSize: 22, fontWeight: '700' },
-  bookTitle: { color: '#f0c040', fontSize: 16, fontWeight: '600' },
-  noBooks: { color: '#888', fontSize: 15 },
+  container: { flex: 1, backgroundColor: Colors.background },
+  center: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scroll: { padding: Spacing.lg, gap: Spacing.lg },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  backText: { color: Colors.textSecondary, fontSize: 15 },
+  heading: { color: Colors.primary, fontSize: 28, fontWeight: '700' },
+  bookTitle: { color: Colors.primary, fontSize: 16, fontWeight: '600' },
+  noBooks: { color: Colors.textSecondary, fontSize: 15 },
   bookPicker: { flexGrow: 0 },
   bookChip: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    marginRight: 8,
+    marginRight: Spacing.sm,
     maxWidth: 160,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  bookChipActive: { backgroundColor: '#f0c040' },
-  bookChipText: { color: '#fff', fontSize: 13 },
-  bookChipTextActive: { color: '#0f0f0f' },
-  row: { flexDirection: 'row', gap: 12 },
+  bookChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  bookChipText: { color: Colors.textSecondary, fontSize: 13 },
+  bookChipTextActive: { color: Colors.surface },
+  row: { flexDirection: 'row', gap: Spacing.sm },
   halfField: { flex: 1, gap: 6 },
   field: { gap: 6 },
-  label: { color: '#888', fontSize: 13 },
+  label: { color: Colors.textSecondary, fontSize: 13, fontWeight: '500' },
   input: {
-    backgroundColor: '#1a1a1a',
-    color: '#fff',
-    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    color: Colors.textPrimary,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 16,
+    ...Shadow.card,
   },
-  error: { color: '#ff4444', fontSize: 13 },
+  error: { color: Colors.error, fontSize: 13 },
   saveBtn: {
-    backgroundColor: '#f0c040',
-    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  saveBtnText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
 });
