@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -33,19 +34,22 @@ export default function SessionScreen() {
   const [startPage, setStartPage] = useState('');
   const [endPage, setEndPage] = useState('');
   const [seconds, setSeconds] = useState(0);
-  const startedAtRef = useRef<Date>(new Date());
+  const startedAtRef = useRef<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    getUserBook(userId, bookId).then((book) => {
-      setUserBook(book);
-      if (book) setStartPage(String(book.current_page));
-      setLoading(false);
-    });
+    getUserBook(userId, bookId)
+      .then((book) => {
+        setUserBook(book);
+        if (book) setStartPage(String(book.current_page));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [userId, bookId]);
 
   const startTimer = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     startedAtRef.current = new Date();
     setPhase('running');
     intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -57,6 +61,7 @@ export default function SessionScreen() {
   };
 
   const resumeTimer = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setPhase('running');
     intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
   };
@@ -69,18 +74,28 @@ export default function SessionScreen() {
   const saveSession = async () => {
     const sp = parseInt(startPage, 10);
     const ep = parseInt(endPage, 10);
-    if (isNaN(sp) || isNaN(ep) || ep <= sp || !userBook) return;
+    const pageCount = userBook?.book.page_count;
+    if (
+      isNaN(sp) || isNaN(ep) ||
+      sp < 0 || ep <= sp ||
+      (pageCount !== null && pageCount !== undefined && ep > pageCount) ||
+      !userBook
+    ) return;
 
-    await createSession({
-      userId,
-      bookId,
-      userBookId: userBook.id,
-      startPage: sp,
-      endPage: ep,
-      durationSeconds: seconds,
-      startedAt: startedAtRef.current,
-    });
-    router.back();
+    try {
+      await createSession({
+        userId,
+        bookId,
+        userBookId: userBook.id,
+        startPage: sp,
+        endPage: ep,
+        durationSeconds: seconds,
+        startedAt: startedAtRef.current!,
+      });
+      router.back();
+    } catch {
+      Alert.alert('Error', 'Could not save session. Please try again.');
+    }
   };
 
   if (loading) {
