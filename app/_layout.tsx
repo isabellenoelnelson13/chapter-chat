@@ -29,6 +29,9 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="session/[bookId]" />
+      <Stack.Screen name="session/manual" />
     </Stack>
   );
 }
