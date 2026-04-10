@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 // Track state in a module-scoped object to avoid closure issues
 const testState = {
-  builderResolve: { data: null as any, error: null },
+  builderResolve: { data: null as any, error: null as any },
   mockBuilder: null as any,
 };
 
@@ -48,6 +48,7 @@ describe('createSession', () => {
   it('inserts a reading session with correct fields', async () => {
     testState.builderResolve = { data: null, error: null };
     await createSession(sessionParams);
+    expect(supabase.from).toHaveBeenCalledWith('reading_sessions');
     expect(testState.mockBuilder.insert).toHaveBeenCalledWith({
       user_id: 'user-1',
       book_id: 'book-1',

@@ -24,7 +24,7 @@ export async function createSession(params: {
     started_at: startedAt.toISOString(),
   };
 
-  const { error } = await supabase.from('reading_sessions').insert(insert);
+  const { error } = await (supabase.from('reading_sessions') as any).insert(insert);
   if (error) throw error;
 
   await updateCurrentPage(userBookId, endPage);
