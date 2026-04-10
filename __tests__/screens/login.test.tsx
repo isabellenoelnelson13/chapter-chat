@@ -3,18 +3,21 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import LoginScreen from '../../app/(auth)/login';
 
 const mockSignIn = jest.fn();
+const mockReplace = jest.fn();
+
 jest.mock('../../lib/auth', () => ({
   useAuth: () => ({ signIn: mockSignIn }),
 }));
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: jest.fn() }),
+  useRouter: () => ({ replace: mockReplace }),
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 describe('LoginScreen', () => {
   beforeEach(() => {
     mockSignIn.mockReset();
+    mockReplace.mockReset();
   });
 
   it('renders email and password fields', () => {
@@ -28,7 +31,20 @@ describe('LoginScreen', () => {
     expect(getByText('Sign In')).toBeTruthy();
   });
 
-  it('calls signIn with email and password on submit', async () => {
+  it('calls signIn with trimmed email and password on submit', async () => {
+    mockSignIn.mockResolvedValue({ error: null });
+    const { getByPlaceholderText, getByText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Email'), '  user@example.com  ');
+    fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
+    fireEvent.press(getByText('Sign In'));
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('user@example.com', 'password123');
+    });
+  });
+
+  it('redirects to tabs on successful sign in', async () => {
     mockSignIn.mockResolvedValue({ error: null });
     const { getByPlaceholderText, getByText } = render(<LoginScreen />);
 
@@ -37,7 +53,7 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Sign In'));
 
     await waitFor(() => {
-      expect(mockSignIn).toHaveBeenCalledWith('user@example.com', 'password123');
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)/');
     });
   });
 

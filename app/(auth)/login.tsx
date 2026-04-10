@@ -23,7 +23,7 @@ export default function LoginScreen() {
   const handleSignIn = async () => {
     setError(null);
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(email.trim(), password);
     setLoading(false);
     if (error) {
       setError(error.message);
