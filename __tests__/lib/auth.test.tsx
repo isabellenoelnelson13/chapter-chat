@@ -28,9 +28,11 @@ describe('useAuth', () => {
     );
   });
 
-  it('returns null session on initial load', async () => {
+  it('returns null session on initial load and loading false after resolution', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await act(async () => {});
     expect(result.current.session).toBeNull();
+    expect(result.current.loading).toBe(false);
   });
 
   it('exposes signIn, signUp, and signOut functions', () => {
