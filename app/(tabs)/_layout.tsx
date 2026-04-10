@@ -1,51 +1,71 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/theme';
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function tabIcon(focusedName: IoniconName, unfocusedName: IoniconName) {
+  return ({ color, focused }: { color: string; focused: boolean }) => (
+    <Ionicons name={focused ? focusedName : unfocusedName} size={24} color={color} />
+  );
+}
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#f0c040',
-        tabBarInactiveTintColor: '#555',
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarStyle: {
+          backgroundColor: Colors.tabBarBg,
+          borderTopColor: Colors.border,
+          borderTopWidth: 1,
+        },
+        tabBarActiveTintColor: Colors.tabActive,
+        tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: ({ focused }) => <TabIcon emoji="📖" focused={focused} /> }}
+        options={{
+          title: 'Home',
+          tabBarIcon: tabIcon('home', 'home-outline'),
+        }}
       />
       <Tabs.Screen
         name="library"
-        options={{ title: 'Library', tabBarIcon: ({ color }) => <TabIcon emoji="📚" color={color} /> }}
+        options={{
+          title: 'Library',
+          tabBarIcon: tabIcon('library', 'library-outline'),
+        }}
       />
       <Tabs.Screen
-        name="discover"
-        options={{ title: 'Discover', tabBarIcon: ({ color }) => <TabIcon emoji="🔍" color={color} /> }}
+        name="stats"
+        options={{
+          title: 'Stats',
+          tabBarIcon: tabIcon('stats-chart', 'stats-chart-outline'),
+        }}
       />
       <Tabs.Screen
         name="social"
-        options={{ title: 'Social', tabBarIcon: ({ color }) => <TabIcon emoji="👥" color={color} /> }}
+        options={{
+          title: 'Social',
+          tabBarIcon: tabIcon('people', 'people-outline'),
+        }}
+      />
+      <Tabs.Screen
+        name="discover"
+        options={{
+          title: 'Discover',
+          tabBarIcon: tabIcon('compass', 'compass-outline'),
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: ({ color }) => <TabIcon emoji="👤" color={color} /> }}
+        options={{
+          href: null,
+        }}
       />
     </Tabs>
   );
 }
-
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>{emoji}</Text>;
-}
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#0f0f0f',
-    borderTopColor: '#1a1a1a',
-    borderTopWidth: 1,
-    paddingBottom: 4,
-  },
-  tabLabel: { fontSize: 10 },
-});
