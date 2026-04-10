@@ -14,7 +14,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: ({ color }) => <TabIcon emoji="📖" color={color} /> }}
+        options={{ title: 'Home', tabBarIcon: ({ focused }) => <TabIcon emoji="📖" focused={focused} /> }}
       />
       <Tabs.Screen
         name="library"
@@ -36,8 +36,8 @@ export default function TabLayout() {
   );
 }
 
-function TabIcon({ emoji, color }: { emoji: string; color: string }) {
-  return <Text style={{ fontSize: 20, opacity: color === '#f0c040' ? 1 : 0.4 }}>{emoji}</Text>;
+function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>{emoji}</Text>;
 }
 
 const styles = StyleSheet.create({
