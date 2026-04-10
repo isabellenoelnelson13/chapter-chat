@@ -96,6 +96,8 @@ describe('moveShelf', () => {
     await moveShelf('ub-1', 'want');
     expect(testState.mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({ shelf: 'want' }));
     expect(testState.mockBuilder.eq).toHaveBeenCalledWith('id', 'ub-1');
+    const updateCall = testState.mockBuilder.update.mock.calls[0][0];
+    expect(updateCall.finished_at).toBeUndefined();
   });
 
   it('sets finished_at when moving to read shelf', async () => {
@@ -112,6 +114,11 @@ describe('updateCurrentPage', () => {
     await updateCurrentPage('ub-1', 120);
     expect(testState.mockBuilder.update).toHaveBeenCalledWith({ current_page: 120 });
     expect(testState.mockBuilder.eq).toHaveBeenCalledWith('id', 'ub-1');
+  });
+
+  it('throws on Supabase error', async () => {
+    testState.builderResolve = { data: null, error: { message: 'update failed' } };
+    await expect(updateCurrentPage('ub-1', 120)).rejects.toEqual({ message: 'update failed' });
   });
 });
 
