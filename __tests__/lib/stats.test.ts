@@ -50,17 +50,13 @@ describe('getTodayStats', () => {
     const stats = await getTodayStats('user-1');
     expect(stats.pagesRead).toBe(60);
     expect(stats.timeSeconds).toBe(3000);
+    expect(stats.streak).toBeGreaterThanOrEqual(0);
   });
 
   it('returns zeros when no sessions today', async () => {
     // First call (today sessions): empty. Second call (all sessions for streak): empty.
-    let callCount = 0;
     testState.mockBuilder.then.mockImplementation((resolve: any, reject: any) => {
-      const val = callCount === 0
-        ? { data: [], error: null }
-        : { data: [], error: null };
-      callCount++;
-      return Promise.resolve(val).then(resolve, reject);
+      return Promise.resolve({ data: [], error: null }).then(resolve, reject);
     });
     const stats = await getTodayStats('user-1');
     expect(stats.pagesRead).toBe(0);

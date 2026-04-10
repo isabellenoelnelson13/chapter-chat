@@ -6,17 +6,14 @@ export interface TodayStats {
   streak: number;
 }
 
-function startOfDay(date: Date = new Date()): string {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+function startOfDay(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
 }
 
-function startOfNextDay(date: Date = new Date()): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + 1);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+function startOfNextDay(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
 }
 
 export async function getTodayStats(userId: string): Promise<TodayStats> {
@@ -59,8 +56,9 @@ export async function getStreak(userId: string): Promise<number> {
   for (const day of uniqueDays) {
     if (day === expected) {
       streak++;
-      const d = new Date(expected);
-      d.setDate(d.getDate() - 1);
+      // Step back one UTC day using UTC arithmetic to avoid DST/timezone issues
+      const d = new Date(expected + 'T00:00:00.000Z');
+      d.setUTCDate(d.getUTCDate() - 1);
       expected = d.toISOString().slice(0, 10);
     } else {
       break;
