@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
+import { Colors, Radius, Shadow, Spacing } from '../../constants/theme';
 
 export default function SignupScreen() {
   const { signUp } = useAuth();
@@ -45,7 +46,7 @@ export default function SignupScreen() {
         <TextInput
           style={styles.input}
           placeholder="Username"
-          placeholderTextColor="#666"
+          placeholderTextColor={Colors.textTertiary}
           autoCapitalize="none"
           value={username}
           onChangeText={setUsername}
@@ -53,7 +54,7 @@ export default function SignupScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#666"
+          placeholderTextColor={Colors.textTertiary}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -62,7 +63,7 @@ export default function SignupScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#666"
+          placeholderTextColor={Colors.textTertiary}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -76,7 +77,7 @@ export default function SignupScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#000" />
+            <ActivityIndicator color={Colors.surface} />
           ) : (
             <Text style={styles.buttonText}>Create Account</Text>
           )}
@@ -91,26 +92,50 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f0f' },
-  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 40 },
-  input: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    padding: 14,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 12,
+  container: { flex: 1, backgroundColor: Colors.background },
+  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.lg },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: Colors.primary,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
-  error: { color: '#ff4444', fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  subtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
+  input: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 14,
+    color: Colors.textPrimary,
+    fontSize: 16,
+    marginBottom: Spacing.sm,
+    ...Shadow.card,
+  },
+  error: {
+    color: Colors.error,
+    fontSize: 13,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
   button: {
-    backgroundColor: '#f0c040',
-    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
     padding: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
-  buttonText: { color: '#000', fontWeight: '700', fontSize: 16 },
-  link: { color: '#888', textAlign: 'center', marginTop: 20, fontSize: 14 },
+  buttonText: { color: Colors.surface, fontWeight: '700', fontSize: 16 },
+  link: {
+    color: Colors.primary,
+    textAlign: 'center',
+    marginTop: Spacing.lg,
+    fontSize: 14,
+  },
 });
