@@ -22,6 +22,10 @@ jest.mock('@/lib/userBooks', () => ({
   rateBook: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/lib/activity', () => ({
+  createEvent: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 jest.mock('expo-router', () => ({
@@ -30,6 +34,7 @@ jest.mock('expo-router', () => ({
 }));
 
 import { getUserBook, moveShelf, rateBook } from '@/lib/userBooks';
+import { createEvent } from '@/lib/activity';
 
 const mockReadingBook = {
   id: 'ub-1',
@@ -61,6 +66,7 @@ const mockReadBook = {
 beforeEach(() => {
   jest.clearAllMocks();
   (getUserBook as jest.Mock).mockResolvedValue(null);
+  (createEvent as jest.Mock).mockResolvedValue(undefined);
 });
 
 describe('BookDetailScreen', () => {
@@ -135,5 +141,89 @@ describe('BookDetailScreen', () => {
     await waitFor(() => screen.getByTestId('start-session-btn'));
     fireEvent.press(screen.getByTestId('start-session-btn'));
     expect(mockPush).toHaveBeenCalledWith('/session/book-1');
+  });
+});
+
+describe('Activity events', () => {
+  it('share progress button is visible when shelf is reading', async () => {
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('share-progress-btn')).toBeTruthy();
+    });
+  });
+
+  it('share progress button is hidden when shelf is not reading', async () => {
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByText('The Hobbit'));
+    expect(screen.queryByTestId('share-progress-btn')).toBeNull();
+  });
+
+  it('tapping share progress button calls createEvent with shared_session', async () => {
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('share-progress-btn'));
+    fireEvent.press(screen.getByTestId('share-progress-btn'));
+    await waitFor(() => {
+      expect(createEvent).toHaveBeenCalledWith('user-1', 'shared_session', 'book-1', {
+        pages_read: 50,
+        duration_seconds: 0,
+      });
+    });
+  });
+
+  it('button label changes to Shared ✓ after tap', async () => {
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('share-progress-btn'));
+    fireEvent.press(screen.getByTestId('share-progress-btn'));
+    await waitFor(() => {
+      expect(screen.getByText('Shared ✓')).toBeTruthy();
+    });
+  });
+
+  it('tapping Move to shelf to reading calls createEvent with started_book', async () => {
+    jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
+      (_opts: any, callback: (index: number) => void) => { callback(1); } // 1 = "Reading"
+    );
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('move-shelf-btn'));
+    fireEvent.press(screen.getByTestId('move-shelf-btn'));
+    await waitFor(() => {
+      expect(createEvent).toHaveBeenCalledWith('user-1', 'started_book', 'book-1', {});
+    });
+  });
+
+  it('tapping Move to shelf to read calls createEvent with finished_book', async () => {
+    jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
+      (_opts: any, callback: (index: number) => void) => { callback(3); } // 3 = "Read"
+    );
+    (getUserBook as jest.Mock)
+      .mockResolvedValueOnce(mockReadingBook) // initial load
+      .mockResolvedValue({ ...mockReadingBook, shelf: 'read', rating: 4, review: 'Great' }); // refetch after moveShelf
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('move-shelf-btn'));
+    fireEvent.press(screen.getByTestId('move-shelf-btn'));
+    await waitFor(() => {
+      expect(createEvent).toHaveBeenCalledWith('user-1', 'finished_book', 'book-1', {
+        rating: 4,
+        review_snippet: 'Great',
+      });
+    });
+  });
+
+  it('tapping Move to shelf to want calls createEvent with added_to_shelf', async () => {
+    jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
+      (_opts: any, callback: (index: number) => void) => { callback(2); } // 2 = "Want to Read"
+    );
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('move-shelf-btn'));
+    fireEvent.press(screen.getByTestId('move-shelf-btn'));
+    await waitFor(() => {
+      expect(createEvent).toHaveBeenCalledWith('user-1', 'added_to_shelf', 'book-1', { shelf: 'want' });
+    });
   });
 });

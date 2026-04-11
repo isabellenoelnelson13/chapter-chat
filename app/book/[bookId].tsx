@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getUserBook, moveShelf, rateBook, type UserBookWithBook } from '@/lib/userBooks';
+import { createEvent } from '@/lib/activity';
 import { Shelf } from '@/types/database';
 import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
 
@@ -29,6 +30,7 @@ export default function BookDetailScreen() {
   const [userBook, setUserBook] = useState<UserBookWithBook | null>(null);
   const [loading, setLoading] = useState(true);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [shareConfirmed, setShareConfirmed] = useState(false);
 
   const userId = session?.user.id ?? '';
 
@@ -78,10 +80,30 @@ export default function BookDetailScreen() {
         const newShelf = SHELF_KEYS[buttonIndex];
         if (newShelf) {
           await moveShelf(userBook.id, newShelf);
+          if (newShelf === 'reading') {
+            await createEvent(userId, 'started_book', bookId, {});
+          } else if (newShelf === 'read') {
+            const ub = await getUserBook(userId, bookId);
+            await createEvent(userId, 'finished_book', bookId, {
+              rating: ub?.rating ?? null,
+              review_snippet: ub?.review ? ub.review.slice(0, 200) : null,
+            });
+          } else if (newShelf === 'want' || newShelf === 'dnf') {
+            await createEvent(userId, 'added_to_shelf', bookId, { shelf: newShelf });
+          }
           router.back();
         }
       }
     );
+  };
+
+  const handleShareProgress = async () => {
+    await createEvent(userId, 'shared_session', bookId, {
+      pages_read: userBook.current_page,
+      duration_seconds: 0,
+    });
+    setShareConfirmed(true);
+    setTimeout(() => setShareConfirmed(false), 2000);
   };
 
   const handleRate = async (rating: number) => {
@@ -138,6 +160,18 @@ export default function BookDetailScreen() {
             >
               <Ionicons name="play" size={14} color={Colors.surface} />
               <Text style={styles.primaryBtnText}>Start Reading Session</Text>
+            </TouchableOpacity>
+          )}
+
+          {shelf === 'reading' && (
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={handleShareProgress}
+              testID="share-progress-btn"
+            >
+              <Text style={styles.secondaryBtnText}>
+                {shareConfirmed ? 'Shared ✓' : 'Share progress'}
+              </Text>
             </TouchableOpacity>
           )}
 
