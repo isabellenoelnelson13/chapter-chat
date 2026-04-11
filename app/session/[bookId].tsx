@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -14,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getUserBook, type UserBookWithBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
+import { createEvent } from '@/lib/activity';
 import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
 
 type Phase = 'setup' | 'running' | 'paused' | 'finish';
@@ -36,6 +38,7 @@ export default function SessionScreen() {
   const [endPage, setEndPage] = useState('');
   const [seconds, setSeconds] = useState(0);
   const [saveError, setSaveError] = useState('');
+  const [shareToFeed, setShareToFeed] = useState(false);
   const startedAtRef = useRef<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -105,6 +108,12 @@ export default function SessionScreen() {
         durationSeconds: seconds,
         startedAt: startedAtRef.current!,
       });
+      if (shareToFeed) {
+        await createEvent(userId, 'shared_session', bookId, {
+          pages_read: ep - sp,
+          duration_seconds: seconds,
+        });
+      }
       router.back();
     } catch {
       Alert.alert('Error', 'Could not save session. Please try again.');
@@ -186,6 +195,16 @@ export default function SessionScreen() {
             keyboardType="number-pad"
           />
           {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
+          <View style={styles.shareRow}>
+            <Text style={styles.shareLabel}>Share to feed</Text>
+            <Switch
+              testID="share-toggle"
+              value={shareToFeed}
+              onValueChange={setShareToFeed}
+              trackColor={{ true: Colors.primary, false: Colors.border }}
+              thumbColor={Colors.surface}
+            />
+          </View>
           <TouchableOpacity style={styles.primaryBtn} onPress={saveSession}>
             <Text style={styles.primaryBtnText}>Save Session</Text>
           </TouchableOpacity>
@@ -253,4 +272,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   errorText: { color: Colors.error, fontSize: 13 },
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  shareLabel: { fontSize: 15, color: Colors.textPrimary },
 });

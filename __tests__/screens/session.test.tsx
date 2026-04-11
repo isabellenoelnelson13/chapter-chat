@@ -27,6 +27,10 @@ jest.mock('@/lib/sessions', () => ({
   createSession: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/lib/activity', () => ({
+  createEvent: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockBack = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: mockBack }),
@@ -35,11 +39,13 @@ jest.mock('expo-router', () => ({
 
 import { getUserBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
+import { createEvent } from '@/lib/activity';
 
 beforeEach(() => {
   jest.clearAllMocks();
   (getUserBook as jest.Mock).mockResolvedValue(mockUserBook);
   (createSession as jest.Mock).mockResolvedValue(undefined);
+  (createEvent as jest.Mock).mockResolvedValue(undefined);
   jest.useFakeTimers();
 });
 
@@ -118,5 +124,58 @@ describe('SessionScreen', () => {
       })
     ));
     expect(mockBack).toHaveBeenCalled();
+  });
+});
+
+describe('Share to feed', () => {
+  it('share toggle is hidden before finish phase', async () => {
+    render(<SessionScreen />);
+    await waitFor(() => screen.getByText('Start Reading'));
+    expect(screen.queryByTestId('share-toggle')).toBeNull();
+  });
+
+  it('share toggle appears in finish phase', async () => {
+    render(<SessionScreen />);
+    await waitFor(() => screen.getByText('Start Reading'));
+    fireEvent.changeText(screen.getByPlaceholderText('Starting page'), '50');
+    fireEvent.press(screen.getByText('Start Reading'));
+    act(() => { jest.advanceTimersByTime(5000); });
+    fireEvent.press(screen.getByText('Finish'));
+    await waitFor(() => {
+      expect(screen.getByTestId('share-toggle')).toBeTruthy();
+    });
+  });
+
+  it('when share toggle is on and session saved, createEvent is called with shared_session', async () => {
+    render(<SessionScreen />);
+    await waitFor(() => screen.getByText('Start Reading'));
+    fireEvent.changeText(screen.getByPlaceholderText('Starting page'), '50');
+    fireEvent.press(screen.getByText('Start Reading'));
+    act(() => { jest.advanceTimersByTime(1800000); });
+    fireEvent.press(screen.getByText('Finish'));
+    await waitFor(() => screen.getByTestId('share-toggle'));
+    fireEvent(screen.getByTestId('share-toggle'), 'valueChange', true);
+    fireEvent.changeText(screen.getByPlaceholderText('Ending page'), '80');
+    fireEvent.press(screen.getByText('Save Session'));
+    await waitFor(() => {
+      expect(createEvent).toHaveBeenCalledWith('user-1', 'shared_session', 'book-1', {
+        pages_read: 30,
+        duration_seconds: 1800,
+      });
+    });
+  });
+
+  it('when share toggle is off, createEvent is not called', async () => {
+    render(<SessionScreen />);
+    await waitFor(() => screen.getByText('Start Reading'));
+    fireEvent.changeText(screen.getByPlaceholderText('Starting page'), '50');
+    fireEvent.press(screen.getByText('Start Reading'));
+    act(() => { jest.advanceTimersByTime(1800000); });
+    fireEvent.press(screen.getByText('Finish'));
+    await waitFor(() => screen.getByPlaceholderText('Ending page'));
+    fireEvent.changeText(screen.getByPlaceholderText('Ending page'), '80');
+    fireEvent.press(screen.getByText('Save Session'));
+    await waitFor(() => expect(createSession).toHaveBeenCalled());
+    expect(createEvent).not.toHaveBeenCalled();
   });
 });
