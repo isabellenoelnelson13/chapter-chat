@@ -37,9 +37,9 @@ export async function getFeed(userId: string): Promise<ActivityEvent[]> {
     .eq('follower_id', userId);
   if (followsError) throw followsError;
   const followingIds = (followsData ?? []).map((r: any) => r.following_id);
-  if (followingIds.length === 0) return [];
+  const actorIds = [...new Set([...followingIds, userId])];
 
-  // 2. Get events from followed users
+  // 2. Get events from followed users + self
   const { data: eventsData, error: eventsError } = await supabase
     .from('activity_events')
     .select(
@@ -49,11 +49,13 @@ export async function getFeed(userId: string): Promise<ActivityEvent[]> {
        likes:activity_likes(count),
        comments:activity_comments(count)`
     )
-    .in('actor_id', followingIds)
+    .in('actor_id', actorIds)
     .order('created_at', { ascending: false })
     .limit(50);
   if (eventsError) throw eventsError;
   const events = eventsData ?? [];
+
+  if (events.length === 0) return [];
 
   // 3. Get liked event IDs for current user
   const eventIds = events.map((e: any) => e.id);

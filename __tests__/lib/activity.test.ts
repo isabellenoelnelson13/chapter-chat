@@ -121,6 +121,52 @@ describe('getFeed', () => {
   });
 });
 
+// ─── getFeed includes own events ─────────────────────────────────────────────
+
+describe('getFeed includes own events', () => {
+  it("includes the requesting user's own events even if they follow nobody", async () => {
+    const { supabase } = require('@/lib/supabase');
+    const ownEvent = {
+      id: 'evt-own',
+      event_type: 'started_book',
+      book_id: 'book-1',
+      metadata: {},
+      created_at: '2026-04-11T10:00:00Z',
+      actor: { id: 'user-1', username: 'me' },
+      book: { id: 'book-1', title: 'Dune', cover_url: null },
+      likes: [{ count: 0 }],
+      comments: [{ count: 0 }],
+    };
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'follows') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => Promise.resolve({ data: [], error: null })),
+        };
+      }
+      if (table === 'activity_events') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          limit: jest.fn(() => Promise.resolve({ data: [ownEvent], error: null })),
+        };
+      }
+      if (table === 'activity_likes') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          in: jest.fn(() => Promise.resolve({ data: [], error: null })),
+        };
+      }
+      return testState.mockBuilder;
+    });
+    const result = await getFeed('user-1');
+    expect(result).toHaveLength(1);
+    expect(result[0].actorUsername).toBe('me');
+  });
+});
+
 // ─── createEvent ─────────────────────────────────────────────────────────────
 
 describe('createEvent', () => {
