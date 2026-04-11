@@ -78,7 +78,11 @@ export default function LibraryScreen() {
           data={books}
           keyExtractor={(item) => item.id}
           contentContainerStyle={books.length === 0 ? styles.emptyContainer : styles.list}
-          renderItem={({ item }) => <BookCard book={item} shelf={activeShelf} />}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => router.push(`/book/${item.book_id}`)}>
+              <BookCard book={item} shelf={activeShelf} />
+            </TouchableOpacity>
+          )}
           ListEmptyComponent={<Text style={styles.emptyText}>No books here yet</Text>}
         />
       )}
@@ -101,7 +105,7 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle} numberOfLines={2}>{book.book.title}</Text>
         <Text style={styles.cardAuthor}>{book.book.author}</Text>
-        {shelf === 'reading' && book.book.page_count && (
+        {shelf === 'reading' && !!book.book.page_count && (
           <>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />

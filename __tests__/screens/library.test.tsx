@@ -17,7 +17,7 @@ const mockBooks = [
     review: null,
     added_at: '2026-04-01T00:00:00Z',
     finished_at: null,
-    book: { id: 'book-1', title: 'The Hobbit', author: 'Tolkien', cover_url: null, page_count: 310 },
+    book: { id: 'book-1', title: 'The Hobbit', author: 'Tolkien', cover_url: null, page_count: 310, description: null },
   },
 ];
 
@@ -86,6 +86,14 @@ describe('LibraryScreen', () => {
     });
     // progress bar is rendered (we verify no crash and the book is shown)
     // The progress fill is a View with a % width — verifying it doesn't crash is sufficient
+  });
+
+  it('taps a book card and navigates to book detail', async () => {
+    (getShelf as jest.Mock).mockResolvedValue(mockBooks);
+    render(<LibraryScreen />);
+    await waitFor(() => screen.getByText('The Hobbit'));
+    fireEvent.press(screen.getByText('The Hobbit'));
+    expect(mockPush).toHaveBeenCalledWith('/book/book-1');
   });
 
   it('shows star rating on Read shelf', async () => {
