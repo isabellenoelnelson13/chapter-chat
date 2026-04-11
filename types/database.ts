@@ -194,6 +194,27 @@ export interface Database {
           body?: string;
         };
       };
+      club_books: {
+        Row: {
+          id: string;
+          club_id: string;
+          book_id: string;
+          added_by: string;
+          started_at: string;
+          ended_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          club_id: string;
+          book_id: string;
+          added_by: string;
+          started_at?: string;
+          ended_at?: string | null;
+        };
+        Update: {
+          ended_at?: string | null;
+        };
+      };
       challenges: {
         Row: {
           id: string;
