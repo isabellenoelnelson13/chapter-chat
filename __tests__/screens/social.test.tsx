@@ -26,20 +26,32 @@ jest.mock('@/lib/follows', () => ({
   cancelFollowRequest: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/lib/activity', () => ({
+  getFeed: jest.fn().mockResolvedValue([]),
+  likeEvent: jest.fn().mockResolvedValue(undefined),
+  unlikeEvent: jest.fn().mockResolvedValue(undefined),
+  getComments: jest.fn().mockResolvedValue([]),
+  addComment: jest.fn().mockResolvedValue({
+    id: 'c-1', userId: 'user-2', username: 'alice', body: 'Nice!', createdAt: '2026-04-11T10:00:00Z',
+  }),
+}));
+
 import { getFollowing, searchUsers } from '@/lib/follows';
+import { getFeed, likeEvent, unlikeEvent } from '@/lib/activity';
 
 beforeEach(() => {
   jest.clearAllMocks();
   (getFollowing as jest.Mock).mockResolvedValue([]);
   (searchUsers as jest.Mock).mockResolvedValue([]);
+  (getFeed as jest.Mock).mockResolvedValue([]);
 });
 
 describe('SocialScreen', () => {
-  it('renders search bar and activity stub on load', async () => {
+  it('renders search bar and activity section on load', async () => {
     render(<SocialScreen />);
     await waitFor(() => {
       expect(screen.getByTestId('search-input')).toBeTruthy();
-      expect(screen.getByText("Your friends' activity will appear here.")).toBeTruthy();
+      expect(screen.getByText('Follow people to see their activity here.')).toBeTruthy();
     });
   });
 
@@ -60,7 +72,7 @@ describe('SocialScreen', () => {
     });
   });
 
-  it('hides following list and activity stub when search is active', async () => {
+  it('hides following list and activity section when search is active', async () => {
     (getFollowing as jest.Mock).mockResolvedValue([
       { id: 'user-2', username: 'alice', bio: null, is_private: false, followStatus: 'following' },
     ]);
@@ -68,7 +80,7 @@ describe('SocialScreen', () => {
     await waitFor(() => screen.getByTestId('search-input'));
     fireEvent.changeText(screen.getByTestId('search-input'), 'bob');
     await waitFor(() => {
-      expect(screen.queryByText("Your friends' activity will appear here.")).toBeNull();
+      expect(screen.queryByText('Follow people to see their activity here.')).toBeNull();
     });
   });
 
@@ -112,6 +124,98 @@ describe('SocialScreen', () => {
     render(<SocialScreen />);
     await waitFor(() => {
       expect(screen.getByText('Requested')).toBeTruthy();
+    });
+  });
+});
+
+// ─── Activity Feed ────────────────────────────────────────────────────────────
+
+const mockEvent = {
+  id: 'evt-1',
+  actorId: 'user-2',
+  actorUsername: 'alice',
+  eventType: 'started_book' as const,
+  bookId: 'book-1',
+  bookTitle: 'The Hobbit',
+  bookCoverUrl: null,
+  metadata: {},
+  createdAt: '2026-04-11T10:00:00Z',
+  likeCount: 0,
+  commentCount: 0,
+  likedByMe: false,
+};
+
+describe('Activity Feed', () => {
+  it('renders empty state when feed is empty', async () => {
+    render(<SocialScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Follow people to see their activity here.')).toBeTruthy();
+    });
+  });
+
+  it('renders feed card with correct verb for started_book', async () => {
+    (getFeed as jest.Mock).mockResolvedValue([mockEvent]);
+    render(<SocialScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/is now reading/)).toBeTruthy();
+      expect(screen.getByText(/The Hobbit/)).toBeTruthy();
+    });
+  });
+
+  it('renders feed card with correct verb for finished_book', async () => {
+    (getFeed as jest.Mock).mockResolvedValue([{
+      ...mockEvent,
+      id: 'evt-2',
+      eventType: 'finished_book',
+      metadata: { rating: 4, review_snippet: 'Loved it' },
+    }]);
+    render(<SocialScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/finished/)).toBeTruthy();
+      expect(screen.getByText(/Loved it/)).toBeTruthy();
+    });
+  });
+
+  it('like button shows filled heart when likedByMe is true', async () => {
+    (getFeed as jest.Mock).mockResolvedValue([{ ...mockEvent, likedByMe: true, likeCount: 1 }]);
+    render(<SocialScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('like-btn-evt-1')).toBeTruthy();
+      expect(screen.getByTestId('like-btn-evt-1').props.accessibilityLabel).toBe('liked');
+    });
+  });
+
+  it('tapping like button calls likeEvent', async () => {
+    (getFeed as jest.Mock).mockResolvedValue([mockEvent]);
+    render(<SocialScreen />);
+    await waitFor(() => screen.getByTestId('like-btn-evt-1'));
+    fireEvent.press(screen.getByTestId('like-btn-evt-1'));
+    await waitFor(() => {
+      expect(likeEvent).toHaveBeenCalledWith('user-1', 'evt-1');
+    });
+  });
+
+  it('tapping comment button opens comments modal', async () => {
+    (getFeed as jest.Mock).mockResolvedValue([mockEvent]);
+    render(<SocialScreen />);
+    await waitFor(() => screen.getByTestId('comment-btn-evt-1'));
+    fireEvent.press(screen.getByTestId('comment-btn-evt-1'));
+    await waitFor(() => {
+      expect(screen.getByText('Comments')).toBeTruthy();
+    });
+  });
+
+  it('tapping send in comments modal calls addComment', async () => {
+    const { addComment } = require('@/lib/activity');
+    (getFeed as jest.Mock).mockResolvedValue([mockEvent]);
+    render(<SocialScreen />);
+    await waitFor(() => screen.getByTestId('comment-btn-evt-1'));
+    fireEvent.press(screen.getByTestId('comment-btn-evt-1'));
+    await waitFor(() => screen.getByTestId('comment-input'));
+    fireEvent.changeText(screen.getByTestId('comment-input'), 'Great book!');
+    fireEvent.press(screen.getByTestId('send-comment-btn'));
+    await waitFor(() => {
+      expect(addComment).toHaveBeenCalledWith('user-1', 'evt-1', 'Great book!');
     });
   });
 });
