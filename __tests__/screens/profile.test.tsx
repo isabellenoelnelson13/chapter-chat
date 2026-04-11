@@ -44,11 +44,19 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+jest.mock('@/lib/follows', () => ({
+  getFollowRequests: jest.fn().mockResolvedValue([]),
+  approveFollowRequest: jest.fn().mockResolvedValue(undefined),
+  declineFollowRequest: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { updatePrivacy } from '@/lib/profile';
+import { getFollowRequests, approveFollowRequest, declineFollowRequest } from '@/lib/follows';
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockSignOut.mockResolvedValue(undefined);
+  (getFollowRequests as jest.Mock).mockResolvedValue([]);
 });
 
 describe('ProfileScreen', () => {
@@ -101,6 +109,47 @@ describe('ProfileScreen', () => {
     fireEvent(screen.getByTestId('privacy-switch'), 'valueChange', false);
     await waitFor(() => {
       expect(updatePrivacy).toHaveBeenCalledWith('user-1', true);
+    });
+  });
+
+  it('hides follow requests card when no pending requests', async () => {
+    render(<ProfileScreen />);
+    await waitFor(() => screen.getByText('isabelle'));
+    expect(screen.queryByText('Follow Requests')).toBeNull();
+  });
+
+  it('shows follow requests card when requests are pending', async () => {
+    (getFollowRequests as jest.Mock).mockResolvedValue([
+      { requesterId: 'user-3', username: 'bob', bio: null },
+    ]);
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Follow Requests')).toBeTruthy();
+      expect(screen.getByText('bob')).toBeTruthy();
+    });
+  });
+
+  it('Accept button calls approveFollowRequest', async () => {
+    (getFollowRequests as jest.Mock).mockResolvedValue([
+      { requesterId: 'user-3', username: 'bob', bio: null },
+    ]);
+    render(<ProfileScreen />);
+    await waitFor(() => screen.getByText('bob'));
+    fireEvent.press(screen.getByTestId('accept-request-user-3'));
+    await waitFor(() => {
+      expect(approveFollowRequest).toHaveBeenCalledWith('user-3', 'user-1');
+    });
+  });
+
+  it('Decline button calls declineFollowRequest', async () => {
+    (getFollowRequests as jest.Mock).mockResolvedValue([
+      { requesterId: 'user-3', username: 'bob', bio: null },
+    ]);
+    render(<ProfileScreen />);
+    await waitFor(() => screen.getByText('bob'));
+    fireEvent.press(screen.getByTestId('decline-request-user-3'));
+    await waitFor(() => {
+      expect(declineFollowRequest).toHaveBeenCalledWith('user-3', 'user-1');
     });
   });
 });

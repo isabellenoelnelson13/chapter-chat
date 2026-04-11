@@ -28,6 +28,12 @@ import {
   type UserProfile,
 } from '@/lib/profile';
 import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import {
+  getFollowRequests,
+  approveFollowRequest,
+  declineFollowRequest,
+  type FollowRequest,
+} from '@/lib/follows';
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
@@ -40,6 +46,7 @@ export default function ProfileScreen() {
   const [yearlyGoal, setYearlyGoal] = useState<YearlyGoalProgress>({ booksRead: 0, goal: 0 });
   const [pagesThisYear, setPagesThisYear] = useState(0);
   const [shelfCounts, setShelfCounts] = useState({ reading: 0, want: 0, read: 0, dnf: 0 });
+  const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,8 +61,9 @@ export default function ProfileScreen() {
         getShelf(userId, 'want'),
         getShelf(userId, 'read'),
         getShelf(userId, 'dnf'),
+        getFollowRequests(userId),
       ])
-        .then(([p, s, yg, history, reading, want, read, dnf]) => {
+        .then(([p, s, yg, history, reading, want, read, dnf, requests]) => {
           setProfile(p);
           setStreak(s);
           setYearlyGoal(yg);
@@ -66,6 +74,7 @@ export default function ProfileScreen() {
             read: read.length,
             dnf: dnf.length,
           });
+          setFollowRequests(requests);
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -110,9 +119,56 @@ export default function ProfileScreen() {
     await updatePrivacy(userId, isPrivate);
   };
 
+  const handleApproveRequest = async (requesterId: string) => {
+    setFollowRequests(prev => prev.filter(r => r.requesterId !== requesterId));
+    await approveFollowRequest(requesterId, userId);
+  };
+
+  const handleDeclineRequest = async (requesterId: string) => {
+    setFollowRequests(prev => prev.filter(r => r.requesterId !== requesterId));
+    await declineFollowRequest(requesterId, userId);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Follow requests */}
+        {followRequests.length > 0 && (
+          <View style={styles.requestsCard}>
+            <View style={styles.requestsTitleRow}>
+              <Text style={styles.requestsTitle}>Follow Requests</Text>
+              <Text style={styles.requestsBadge}>{followRequests.length}</Text>
+            </View>
+            {followRequests.map(req => (
+              <View key={req.requesterId} style={styles.requestRow}>
+                <View style={styles.requestAvatar}>
+                  <Text style={styles.requestInitial}>
+                    {req.username.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.requestInfo}>
+                  <Text style={styles.requestUsername}>{req.username}</Text>
+                  {req.bio ? <Text style={styles.requestBio} numberOfLines={1}>{req.bio}</Text> : null}
+                </View>
+                <TouchableOpacity
+                  style={styles.acceptBtn}
+                  onPress={() => handleApproveRequest(req.requesterId)}
+                  testID={`accept-request-${req.requesterId}`}
+                >
+                  <Text style={styles.acceptBtnText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.declineBtn}
+                  onPress={() => handleDeclineRequest(req.requesterId)}
+                  testID={`decline-request-${req.requesterId}`}
+                >
+                  <Text style={styles.declineBtnText}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* User header */}
         <View style={styles.header}>
           <View style={styles.avatar}>
@@ -275,4 +331,51 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 15, color: Colors.textPrimary },
   divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: Spacing.md },
   signOut: { fontSize: 15, color: Colors.error, fontWeight: '600' },
+
+  requestsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    ...Shadow.card,
+  },
+  requestsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  requestsTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  requestsBadge: {
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  requestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  requestAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  requestInitial: { fontSize: 14, fontWeight: '700', color: Colors.surface },
+  requestInfo: { flex: 1 },
+  requestUsername: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  requestBio: { fontSize: 12, color: Colors.textSecondary },
+  acceptBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  acceptBtnText: { color: Colors.surface, fontWeight: '700', fontSize: 12 },
+  declineBtn: {
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  declineBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 12 },
 });
