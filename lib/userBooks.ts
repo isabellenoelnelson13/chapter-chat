@@ -13,10 +13,12 @@ export interface UserBookWithBook {
   review: string | null;
   added_at: string;
   finished_at: string | null;
-  book: Pick<BookRow, 'id' | 'title' | 'author' | 'cover_url' | 'page_count'>;
+  book: Pick<BookRow, 'id' | 'title' | 'author' | 'cover_url' | 'page_count'> & {
+    description: string | null;
+  };
 }
 
-const BOOK_SELECT = '*, book:books(id, title, author, cover_url, page_count)';
+const BOOK_SELECT = '*, book:books(id, title, author, cover_url, page_count, description)';
 
 export async function addToShelf(userId: string, bookId: string, shelf: Shelf): Promise<string> {
   const { data, error } = await supabase

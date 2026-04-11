@@ -42,6 +42,7 @@ export interface Database {
           cover_url: string | null;
           page_count: number | null;
           genres: string[] | null;
+          description: string | null;
           created_at: string;
         };
         Insert: {
@@ -52,6 +53,7 @@ export interface Database {
           cover_url?: string | null;
           page_count?: number | null;
           genres?: string[] | null;
+          description?: string | null;
           created_at?: string;
         };
         Update: {
@@ -61,6 +63,7 @@ export interface Database {
           cover_url?: string | null;
           page_count?: number | null;
           genres?: string[] | null;
+          description?: string | null;
         };
       };
       user_books: {

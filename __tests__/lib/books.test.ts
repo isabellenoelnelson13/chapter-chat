@@ -39,6 +39,7 @@ const fakeVolume = {
     imageLinks: { thumbnail: 'http://books.google.com/cover.jpg' },
     pageCount: 310,
     categories: ['Fantasy'],
+    // no description field → will map to null
   },
 };
 
@@ -59,6 +60,7 @@ describe('searchBooks', () => {
       cover_url: 'https://books.google.com/cover.jpg',
       page_count: 310,
       genres: ['Fantasy'],
+      description: null,
     });
   });
 
@@ -120,6 +122,7 @@ describe('fetchBookByGoogleId', () => {
       cover_url: 'https://books.google.com/cover.jpg',
       page_count: 310,
       genres: ['Fantasy'],
+      description: null,
     });
   });
 });
@@ -134,6 +137,7 @@ describe('upsertBook', () => {
       cover_url: 'https://books.google.com/cover.jpg',
       page_count: 310,
       genres: ['Fantasy'],
+      description: null,
     };
     const id = await upsertBook(book);
     expect(id).toBe('supabase-uuid');
@@ -145,7 +149,7 @@ describe('upsertBook', () => {
 
   it('throws when Supabase returns an error', async () => {
     testState.builderResolve = { data: null, error: { message: 'DB error' } };
-    await expect(upsertBook({ google_books_id: 'x', title: 'X', author: 'A', cover_url: null, page_count: null, genres: null }))
+    await expect(upsertBook({ google_books_id: 'x', title: 'X', author: 'A', cover_url: null, page_count: null, genres: null, description: null }))
       .rejects.toEqual({ message: 'DB error' });
   });
 });

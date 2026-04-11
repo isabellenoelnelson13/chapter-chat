@@ -10,6 +10,7 @@ export interface BookSearchResult {
   cover_url: string | null;
   page_count: number | null;
   genres: string[] | null;
+  description: string | null;
 }
 
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {
@@ -41,6 +42,7 @@ function volumeToBook(volume: any): BookSearchResult {
     cover_url: thumbnail ? thumbnail.replace('http://', 'https://') : null,
     page_count: info.pageCount ?? null,
     genres: info.categories ?? null,
+    description: info.description ?? null,
   };
 }
 
@@ -55,6 +57,7 @@ export async function upsertBook(book: BookSearchResult): Promise<string> {
         cover_url: book.cover_url,
         page_count: book.page_count,
         genres: book.genres,
+        description: book.description,
       },
       { onConflict: 'google_books_id' }
     )
