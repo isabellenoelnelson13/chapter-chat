@@ -36,7 +36,7 @@ export interface Database {
       books: {
         Row: {
           id: string;
-          google_books_id: string | null;
+          hardcover_id: string | null;
           title: string;
           author: string;
           cover_url: string | null;
@@ -47,7 +47,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          google_books_id?: string | null;
+          hardcover_id?: string | null;
           title: string;
           author: string;
           cover_url?: string | null;
@@ -57,7 +57,7 @@ export interface Database {
           created_at?: string;
         };
         Update: {
-          google_books_id?: string | null;
+          hardcover_id?: string | null;
           title?: string;
           author?: string;
           cover_url?: string | null;
