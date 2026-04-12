@@ -9,6 +9,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -188,13 +189,20 @@ export default function ClubDetailScreen() {
 
         <Text style={styles.sectionTitle}>Currently Reading</Text>
         {club.currentBook ? (
-          <View style={styles.bookRow}>
-            <Text style={styles.bookTitle}>{club.currentBook.bookTitle}</Text>
-            {isOwner && (
-              <TouchableOpacity onPress={() => setShowBookModal(true)} testID="change-book-btn">
-                <Text style={styles.changeBookText}>Change</Text>
-              </TouchableOpacity>
+          <View style={styles.currentBookCard}>
+            {club.currentBook.bookCoverUrl ? (
+              <Image source={{ uri: club.currentBook.bookCoverUrl }} style={styles.currentBookCover} />
+            ) : (
+              <View style={styles.currentBookCoverPlaceholder} />
             )}
+            <View style={styles.currentBookInfo}>
+              <Text style={styles.currentBookTitle} numberOfLines={3}>{club.currentBook.bookTitle}</Text>
+              {isOwner && (
+                <TouchableOpacity onPress={() => setShowBookModal(true)} testID="change-book-btn">
+                  <Text style={styles.changeBookText}>Change book</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         ) : (
           <View style={styles.bookRow}>
@@ -325,13 +333,23 @@ export default function ClubDetailScreen() {
             />
             {bookResults.map((b) => (
               <TouchableOpacity
-                key={b.google_books_id}
-                style={styles.searchResult}
+                key={b.hardcover_id}
+                style={styles.bookSearchResult}
                 onPress={() => handleSetBook(b)}
-                testID={`book-result-${b.google_books_id}`}
+                testID={`book-result-${b.hardcover_id}`}
               >
-                <Text style={styles.searchResultText}>{b.title}</Text>
-                <Text style={styles.searchResultSub}>{b.author}</Text>
+                {b.cover_url ? (
+                  <Image source={{ uri: b.cover_url }} style={styles.bookSearchCover} />
+                ) : (
+                  <View style={styles.bookSearchCoverPlaceholder} />
+                )}
+                <View style={styles.bookSearchInfo}>
+                  <Text style={styles.searchResultText} numberOfLines={2}>{b.title}</Text>
+                  <Text style={styles.searchResultSub}>{b.author}</Text>
+                  {!!b.page_count && (
+                    <Text style={styles.searchResultPages}>{b.page_count} pages</Text>
+                  )}
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -379,9 +397,44 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 15 },
   bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bookTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, flex: 1 },
   noBookText: { fontSize: 15, color: Colors.textTertiary, flex: 1 },
-  changeBookText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  changeBookText: { color: Colors.primary, fontSize: 13, fontWeight: '600', marginTop: 6 },
+  currentBookCard: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.md,
+    alignItems: 'flex-start',
+    ...Shadow.card,
+  },
+  currentBookCover: { width: 70, height: 105, borderRadius: Radius.sm },
+  currentBookCoverPlaceholder: {
+    width: 70,
+    height: 105,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.border,
+  },
+  currentBookInfo: { flex: 1, justifyContent: 'flex-start', paddingTop: 2 },
+  currentBookTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  bookSearchResult: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.md,
+    alignItems: 'center',
+    ...Shadow.card,
+  },
+  bookSearchCover: { width: 50, height: 75, borderRadius: Radius.sm },
+  bookSearchCoverPlaceholder: {
+    width: 50,
+    height: 75,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.border,
+  },
+  bookSearchInfo: { flex: 1, gap: 3 },
+  searchResultPages: { fontSize: 12, color: Colors.textTertiary },
   historyItem: { fontSize: 14, color: Colors.textSecondary },
   discussionHeader: {
     flexDirection: 'row',

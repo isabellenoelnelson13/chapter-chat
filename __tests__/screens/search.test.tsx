@@ -29,12 +29,15 @@ import { searchBooks, upsertBook } from '@/lib/books';
 import { addToShelf } from '@/lib/userBooks';
 
 const mockResult = {
-  google_books_id: 'gbk1',
+  hardcover_id: 'hc1',
   title: 'The Hobbit',
   author: 'Tolkien',
   cover_url: null,
   page_count: 310,
   genres: ['Fantasy'],
+  description: null,
+  rating: 4.2,
+  users_read_count: 50000,
 };
 
 beforeEach(() => {

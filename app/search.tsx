@@ -103,7 +103,7 @@ export default function SearchScreen() {
 
       <FlatList
         data={results}
-        keyExtractor={(item) => item.google_books_id}
+        keyExtractor={(item) => item.hardcover_id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.result} onPress={() => showShelfPicker(item)}>
@@ -115,7 +115,7 @@ export default function SearchScreen() {
             <View style={styles.info}>
               <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
               <Text style={styles.author}>{item.author}</Text>
-              {item.page_count && (
+              {!!item.page_count && (
                 <Text style={styles.pages}>{item.page_count} pages</Text>
               )}
             </View>
