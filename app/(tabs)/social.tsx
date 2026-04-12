@@ -336,7 +336,15 @@ export default function SocialScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.title}>Social</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Social</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/clubs')}
+            testID="clubs-btn"
+          >
+            <Text style={styles.clubsLink}>Clubs</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={Colors.textTertiary} />
@@ -399,6 +407,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { padding: Spacing.lg, gap: Spacing.lg },
   title: { fontSize: 32, fontWeight: '700', color: Colors.primary },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  clubsLink: {
+    color: Colors.primary,
+    fontWeight: '600',
+    fontSize: 15,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -219,3 +219,17 @@ describe('Activity Feed', () => {
     });
   });
 });
+
+describe('Clubs navigation', () => {
+  it('Clubs button is visible', async () => {
+    render(<SocialScreen />);
+    await waitFor(() => expect(screen.getByTestId('clubs-btn')).toBeTruthy());
+  });
+
+  it('tapping Clubs button navigates to /clubs', async () => {
+    render(<SocialScreen />);
+    await waitFor(() => screen.getByTestId('clubs-btn'));
+    fireEvent.press(screen.getByTestId('clubs-btn'));
+    expect(mockPush).toHaveBeenCalledWith('/clubs');
+  });
+});
