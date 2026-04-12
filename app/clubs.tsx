@@ -1,0 +1,211 @@
+import { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '@/lib/auth';
+import { getMyClubs, createClub, type ClubSummary } from '@/lib/clubs';
+import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+
+export default function ClubsScreen() {
+  const { session } = useAuth();
+  const router = useRouter();
+  const userId = session?.user.id ?? '';
+
+  const [clubs, setClubs] = useState<ClubSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [clubName, setClubName] = useState('');
+  const [clubDesc, setClubDesc] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const loadClubs = useCallback(() => {
+    if (!userId) return;
+    setLoading(true);
+    getMyClubs(userId)
+      .then(setClubs)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadClubs();
+    }, [loadClubs])
+  );
+
+  const handleCreate = async () => {
+    if (!clubName.trim()) return;
+    setCreating(true);
+    try {
+      await createClub(userId, clubName.trim(), clubDesc.trim());
+      setShowCreate(false);
+      setClubName('');
+      setClubDesc('');
+      loadClubs();
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  if (!session) return null;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>My Clubs</Text>
+        <TouchableOpacity
+          style={styles.newBtn}
+          onPress={() => setShowCreate(true)}
+          testID="new-club-btn"
+        >
+          <Text style={styles.newBtnText}>+ New Club</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: 32 }} />
+      ) : clubs.length === 0 ? (
+        <Text style={styles.emptyText}>You're not in any clubs yet.</Text>
+      ) : (
+        <FlatList
+          data={clubs}
+          keyExtractor={(c) => c.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/club/${item.id}`)}
+              testID={`club-card-${item.id}`}
+            >
+              <Text style={styles.clubName}>{item.name}</Text>
+              {item.currentBookTitle ? (
+                <Text style={styles.currentBook}>{item.currentBookTitle}</Text>
+              ) : (
+                <Text style={styles.noBook}>No book selected</Text>
+              )}
+              <Text style={styles.memberCount}>{item.memberCount} members</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modal}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>New Club</Text>
+            <TouchableOpacity onPress={() => setShowCreate(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Club name"
+              placeholderTextColor={Colors.textTertiary}
+              value={clubName}
+              onChangeText={setClubName}
+            />
+            <TextInput
+              style={[styles.input, styles.descInput]}
+              placeholder="Description (optional)"
+              placeholderTextColor={Colors.textTertiary}
+              value={clubDesc}
+              onChangeText={setClubDesc}
+              multiline
+            />
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleCreate}
+              disabled={creating}
+              testID="create-club-btn"
+            >
+              <Text style={styles.primaryBtnText}>
+                {creating ? 'Creating...' : 'Create Club'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  title: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary },
+  newBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+  },
+  newBtnText: { color: Colors.surface, fontWeight: '600', fontSize: 14 },
+  list: { padding: Spacing.lg, gap: Spacing.sm },
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: 4,
+    ...Shadow.card,
+  },
+  clubName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  currentBook: { fontSize: 14, color: Colors.primary },
+  noBook: { fontSize: 14, color: Colors.textTertiary },
+  memberCount: { fontSize: 12, color: Colors.textSecondary },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 48,
+    color: Colors.textSecondary,
+    fontSize: 15,
+  },
+  modal: { flex: 1, backgroundColor: Colors.background },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  cancelText: { color: Colors.primary, fontSize: 16 },
+  form: { padding: Spacing.lg, gap: Spacing.sm },
+  input: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  descInput: { minHeight: 80, textAlignVertical: 'top' },
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+  },
+  primaryBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
+});
