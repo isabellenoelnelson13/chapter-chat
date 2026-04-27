@@ -39,12 +39,32 @@ const TRENDING_QUERY = `
   }
 `;
 
-const BY_GENRE_QUERY = `
-  query BooksByGenre($genre: String!, $limit: Int!) {
+const REVIEWS_QUERY = `
+  query BookReviews($book_id: Int!, $limit: Int!) {
+    user_books(
+      where: {
+        book_id: { _eq: $book_id }
+        review: { _is_null: false }
+      }
+      limit: $limit
+      order_by: { rating: desc_nulls_last }
+    ) {
+      rating
+      review
+      user { username }
+    }
+  }
+`;
+
+const TRENDING_SINCE_QUERY = `
+  query TrendingSince($limit: Int!, $since: date!) {
     books(
-      where: { taggings: { tag: { tag: { _ilike: $genre } } } }
       order_by: { users_read_count: desc }
       limit: $limit
+      where: {
+        users_read_count: { _gt: 10 }
+        release_date: { _gte: $since }
+      }
     ) {
       ${BOOK_FIELDS}
     }
@@ -92,7 +112,9 @@ function normalizeSearchHit(hit: any): BookResult {
       : 'Unknown Author',
     cover_url: doc.image?.url ?? doc.cover_image_url ?? null,
     page_count: doc.pages ?? null,
-    genres: Array.isArray(doc.cached_tags)
+    genres: Array.isArray(doc.genres)
+      ? doc.genres.filter(Boolean)
+      : Array.isArray(doc.cached_tags)
       ? doc.cached_tags
           .map((t: any) => (typeof t === 'string' ? t : t?.tag))
           .filter(Boolean)
@@ -101,6 +123,11 @@ function normalizeSearchHit(hit: any): BookResult {
     rating: typeof doc.rating === 'number' ? doc.rating : null,
     users_read_count: doc.users_read_count ?? 0,
   };
+}
+
+function sinceDate(days: number): string {
+  const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return d.toISOString().split('T')[0];
 }
 
 async function queryHardcover(
@@ -126,7 +153,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, query, genre, limit = 20 } = await req.json();
+    const { action, query, period, hardcover_id, limit = 20 } = await req.json();
     const apiKey = Deno.env.get('HARDCOVER_API_KEY') ?? '';
 
     if (!apiKey) {
@@ -144,22 +171,46 @@ serve(async (req) => {
         per_page: Number(limit),
       });
       const rawResults = json.data?.search?.results;
-      // results is a JSON string from Typesense — parse it if needed
-      const hits: any[] = typeof rawResults === 'string'
-        ? JSON.parse(rawResults)
-        : (Array.isArray(rawResults) ? rawResults : []);
+      const parsed = typeof rawResults === 'string' ? JSON.parse(rawResults) : rawResults;
+      const hits: any[] = Array.isArray(parsed) ? parsed : (parsed?.hits ?? []);
       books = hits.map(normalizeSearchHit);
     } else if (action === 'trending') {
-      const json = await queryHardcover(apiKey, TRENDING_QUERY, {
+      const days = period === 'last_month' ? 30
+        : period === '3_months' ? 90
+        : period === '1_year' ? 365
+        : null;
+
+      if (days !== null) {
+        const json = await queryHardcover(apiKey, TRENDING_SINCE_QUERY, {
+          limit: Number(limit),
+          since: sinceDate(days),
+        });
+        books = (json.data?.books ?? []).map(normalizeBook);
+      } else {
+        const json = await queryHardcover(apiKey, TRENDING_QUERY, {
+          limit: Number(limit),
+        });
+        books = (json.data?.books ?? []).map(normalizeBook);
+      }
+    } else if (action === 'reviews') {
+      const bookIdInt = parseInt(String(hardcover_id ?? ''), 10);
+      if (isNaN(bookIdInt)) {
+        return new Response(JSON.stringify([]), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const json = await queryHardcover(apiKey, REVIEWS_QUERY, {
+        book_id: bookIdInt,
         limit: Number(limit),
       });
-      books = (json.data?.books ?? []).map(normalizeBook);
-    } else if (action === 'by_genre') {
-      const json = await queryHardcover(apiKey, BY_GENRE_QUERY, {
-        genre: String(genre ?? ''),
-        limit: Number(limit),
+      const reviews = (json.data?.user_books ?? []).map((r: any) => ({
+        rating: typeof r.rating === 'number' ? r.rating : null,
+        review: r.review,
+        username: r.user?.username ?? 'Anonymous',
+      }));
+      return new Response(JSON.stringify(reviews), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      books = (json.data?.books ?? []).map(normalizeBook);
     } else {
       return new Response(
         JSON.stringify({ error: `Unknown action: ${action}` }),

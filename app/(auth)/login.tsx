@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
-import { Colors, Radius, Shadow, Spacing } from '../../constants/theme';
+import { Colors, Fonts, Radius, Shadow, Spacing } from '../../constants/theme';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -87,13 +87,14 @@ const styles = StyleSheet.create({
   inner: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.lg },
   title: {
     fontSize: 34,
-    fontWeight: '700',
+    fontFamily: Fonts.bold,
     color: Colors.primary,
     textAlign: 'center',
     marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 14,
+    fontFamily: Fonts.regular,
     color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: Spacing.xl,
@@ -106,12 +107,14 @@ const styles = StyleSheet.create({
     padding: 14,
     color: Colors.textPrimary,
     fontSize: 16,
+    fontFamily: Fonts.regular,
     marginBottom: Spacing.sm,
     ...Shadow.card,
   },
   error: {
     color: Colors.error,
     fontSize: 13,
+    fontFamily: Fonts.regular,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
@@ -122,11 +125,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.sm,
   },
-  buttonText: { color: Colors.surface, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 16 },
   link: {
     color: Colors.primary,
     textAlign: 'center',
     marginTop: Spacing.lg,
     fontSize: 14,
+    fontFamily: Fonts.regular,
   },
 });

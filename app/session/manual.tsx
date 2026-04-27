@@ -9,22 +9,21 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  runOnJS,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
-function parseTime(hhmm: string): number | null {
-  const parts = hhmm.split(':');
-  if (parts.length !== 2) return null;
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  if (isNaN(h) || isNaN(m) || h < 0 || m < 0 || m > 59) return null;
-  return h * 3600 + m * 60;
-}
 
 export default function ManualSessionScreen() {
   const { session } = useAuth();
@@ -36,8 +35,16 @@ export default function ManualSessionScreen() {
   const [loading, setLoading] = useState(true);
   const [startPage, setStartPage] = useState('');
   const [endPage, setEndPage] = useState('');
-  const [timeStr, setTimeStr] = useState('');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
+  const [secs, setSecs] = useState('');
   const [error, setError] = useState('');
+  const successOpacity = useSharedValue(0);
+  const successScale = useSharedValue(0.8);
+  const successStyle = useAnimatedStyle(() => ({
+    opacity: successOpacity.value,
+    transform: [{ scale: successScale.value }],
+  }));
 
   useEffect(() => {
     getShelf(userId, 'reading')
@@ -65,11 +72,14 @@ export default function ManualSessionScreen() {
       setError('End page must be greater than start page');
       return;
     }
-    const durationSeconds = parseTime(timeStr);
-    if (durationSeconds === null) {
-      setError('Enter time as H:MM or HH:MM');
+    const h = parseInt(hours || '0', 10);
+    const m = parseInt(minutes || '0', 10);
+    const s = parseInt(secs || '0', 10);
+    if (isNaN(h) || isNaN(m) || isNaN(s) || m > 59 || s > 59 || h < 0 || m < 0 || s < 0) {
+      setError('Enter valid hours, minutes, and seconds');
       return;
     }
+    const durationSeconds = h * 3600 + m * 60 + s;
     if (durationSeconds <= 0) {
       setError('Time must be greater than 0');
       return;
@@ -86,7 +96,18 @@ export default function ManualSessionScreen() {
         durationSeconds,
         startedAt: new Date(),
       });
-      router.back();
+      successOpacity.value = withSequence(
+        withTiming(1, { duration: 250 }),
+        withTiming(1, { duration: 800 }),
+        withTiming(0, { duration: 300 }, (finished) => {
+          if (finished) runOnJS(router.back)();
+        })
+      );
+      successScale.value = withSequence(
+        withTiming(1, { duration: 250 }),
+        withTiming(1, { duration: 800 }),
+        withTiming(0.8, { duration: 300 })
+      );
     } catch {
       Alert.alert('Error', 'Could not save session. Please try again.');
     }
@@ -173,13 +194,44 @@ export default function ManualSessionScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Time spent</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="HH:MM"
-            placeholderTextColor={Colors.textTertiary}
-            value={timeStr}
-            onChangeText={setTimeStr}
-          />
+          <View style={styles.timeRow}>
+            <View style={styles.timeField}>
+              <TextInput
+                style={[styles.input, styles.timeInput]}
+                placeholder="0"
+                placeholderTextColor={Colors.textTertiary}
+                value={hours}
+                onChangeText={setHours}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              <Text style={styles.timeUnit}>hr</Text>
+            </View>
+            <View style={styles.timeField}>
+              <TextInput
+                style={[styles.input, styles.timeInput]}
+                placeholder="0"
+                placeholderTextColor={Colors.textTertiary}
+                value={minutes}
+                onChangeText={setMinutes}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              <Text style={styles.timeUnit}>min</Text>
+            </View>
+            <View style={styles.timeField}>
+              <TextInput
+                style={[styles.input, styles.timeInput]}
+                placeholder="0"
+                placeholderTextColor={Colors.textTertiary}
+                value={secs}
+                onChangeText={setSecs}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              <Text style={styles.timeUnit}>sec</Text>
+            </View>
+          </View>
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -188,6 +240,12 @@ export default function ManualSessionScreen() {
           <Text style={styles.saveBtnText}>Log Session</Text>
         </TouchableOpacity>
       </ScrollView>
+      <Animated.View style={[styles.successOverlay, successStyle]} pointerEvents="none">
+        <View style={styles.successBadge}>
+          <Ionicons name="checkmark-circle" size={48} color={Colors.primary} />
+          <Text style={styles.successText}>Session logged!</Text>
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -202,10 +260,10 @@ const styles = StyleSheet.create({
   },
   scroll: { padding: Spacing.lg, gap: Spacing.lg },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  backText: { color: Colors.textSecondary, fontSize: 15 },
-  heading: { color: Colors.primary, fontSize: 28, fontWeight: '700' },
-  bookTitle: { color: Colors.primary, fontSize: 16, fontWeight: '600' },
-  noBooks: { color: Colors.textSecondary, fontSize: 15 },
+  backText: { color: Colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
+  heading: { color: Colors.primary, fontSize: 28, fontFamily: Fonts.bold },
+  bookTitle: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.semiBold },
+  noBooks: { color: Colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
   bookPicker: { flexGrow: 0 },
   bookChip: {
     backgroundColor: Colors.surface,
@@ -218,12 +276,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   bookChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  bookChipText: { color: Colors.textSecondary, fontSize: 13 },
-  bookChipTextActive: { color: Colors.surface },
+  bookChipText: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+  bookChipTextActive: { color: Colors.surface, fontFamily: Fonts.regular },
   row: { flexDirection: 'row', gap: Spacing.sm },
   halfField: { flex: 1, gap: 6 },
   field: { gap: 6 },
-  label: { color: Colors.textSecondary, fontSize: 13, fontWeight: '500' },
+  timeRow: { flexDirection: 'row', gap: Spacing.sm },
+  timeField: { flex: 1, alignItems: 'center', gap: 4 },
+  timeInput: { textAlign: 'center', width: '100%' },
+  timeUnit: { color: Colors.textSecondary, fontSize: 12, fontFamily: Fonts.medium },
+  label: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.medium },
   input: {
     backgroundColor: Colors.surface,
     color: Colors.textPrimary,
@@ -233,14 +295,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 16,
+    fontFamily: Fonts.regular,
     ...Shadow.card,
   },
-  error: { color: Colors.error, fontSize: 13 },
+  error: { color: Colors.error, fontSize: 13, fontFamily: Fonts.regular },
   saveBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  saveBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: Colors.surface, fontSize: 16, fontFamily: Fonts.bold },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successBadge: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.xl * 1.5,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    ...Shadow.card,
+  },
+  successText: { color: Colors.textPrimary, fontSize: 16, fontFamily: Fonts.bold },
 });

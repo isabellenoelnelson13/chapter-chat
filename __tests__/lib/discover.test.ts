@@ -1,4 +1,4 @@
-import { getTrending, getBooksByGenre, getRecommended } from '@/lib/discover';
+import { getTrending, getRecommended } from '@/lib/discover';
 import { type BookSearchResult } from '@/lib/books';
 
 // ── Supabase mock ──────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ const fakeBook2: BookSearchResult = {
 };
 
 describe('getTrending', () => {
-  it('calls Edge Function with action trending and default limit', async () => {
+  it('calls Edge Function with action trending and all_time period by default', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => [fakeBook],
@@ -71,10 +71,24 @@ describe('getTrending', () => {
       'https://test.supabase.co/functions/v1/books',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ action: 'trending', limit: 20 }),
+        body: JSON.stringify({ action: 'trending', period: 'all_time', limit: 20 }),
       })
     );
     expect(results).toEqual([fakeBook]);
+  });
+
+  it('passes the period parameter', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    });
+
+    await getTrending('last_month');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ body: JSON.stringify({ action: 'trending', period: 'last_month', limit: 20 }) })
+    );
   });
 
   it('respects custom limit', async () => {
@@ -83,105 +97,37 @@ describe('getTrending', () => {
       json: async () => [],
     });
 
-    await getTrending(5);
+    await getTrending('all_time', 5);
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ body: JSON.stringify({ action: 'trending', limit: 5 }) })
+      expect.objectContaining({ body: JSON.stringify({ action: 'trending', period: 'all_time', limit: 5 }) })
     );
-  });
-});
-
-describe('getBooksByGenre', () => {
-  it('calls Edge Function with action by_genre and genre string', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => [fakeBook],
-    });
-
-    const results = await getBooksByGenre('fantasy');
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      'https://test.supabase.co/functions/v1/books',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ action: 'by_genre', genre: 'fantasy', limit: 20 }),
-      })
-    );
-    expect(results).toEqual([fakeBook]);
   });
 });
 
 describe('getRecommended', () => {
-  it('falls back to trending when user has fewer than 3 read/reading books', async () => {
+  it('returns non-personalized empty result when user has fewer than 3 read/reading books', async () => {
     testState.builderResolve = {
       data: [
-        { books: { genres: ['Fantasy'], hardcover_id: 'a' } },
-        { books: { genres: ['Fantasy'], hardcover_id: 'b' } },
+        { books: { hardcover_id: 'a' } },
+        { books: { hardcover_id: 'b' } },
       ],
       error: null,
     };
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => [fakeBook],
-    });
-
     const result = await getRecommended('user-1');
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ body: JSON.stringify({ action: 'trending', limit: 20 }) })
-    );
     expect(result.personalized).toBe(false);
-    expect(result.books).toEqual([fakeBook]);
+    expect(result.books).toEqual([]);
   });
 
-  it('returns personalized results based on top genres when user has 3+ books', async () => {
+  it('returns personalized results filtered from trending when user has 3+ books', async () => {
     testState.builderResolve = {
       data: [
-        { books: { genres: ['Sci-Fi'], hardcover_id: 'x1' } },
-        { books: { genres: ['Sci-Fi'], hardcover_id: 'x2' } },
-        { books: { genres: ['Fantasy'], hardcover_id: 'x3' } },
-      ],
-      error: null,
-    };
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ ok: true, json: async () => [fakeBook] })
-      .mockResolvedValueOnce({ ok: true, json: async () => [fakeBook2] });
-
-    const result = await getRecommended('user-1');
-
-    expect(result.personalized).toBe(true);
-    expect(result.books.map((b) => b.hardcover_id)).toEqual(['1', '2']);
-  });
-
-  it('deduplicates books that appear in multiple genre results', async () => {
-    testState.builderResolve = {
-      data: [
-        { books: { genres: ['Sci-Fi'], hardcover_id: 'x1' } },
-        { books: { genres: ['Sci-Fi'], hardcover_id: 'x2' } },
-        { books: { genres: ['Fantasy'], hardcover_id: 'x3' } },
-      ],
-      error: null,
-    };
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ ok: true, json: async () => [fakeBook] })
-      .mockResolvedValueOnce({ ok: true, json: async () => [fakeBook] });
-
-    const result = await getRecommended('user-1');
-
-    expect(result.books.filter((b) => b.hardcover_id === '1')).toHaveLength(1);
-  });
-
-  it('filters out books already on the user shelves', async () => {
-    testState.builderResolve = {
-      data: [
-        { books: { genres: ['Sci-Fi'], hardcover_id: '1' } }, // same as fakeBook
-        { books: { genres: ['Sci-Fi'], hardcover_id: 'x2' } },
-        { books: { genres: ['Sci-Fi'], hardcover_id: 'x3' } },
+        { books: { hardcover_id: '1' } }, // same as fakeBook — should be filtered out
+        { books: { hardcover_id: 'x2' } },
+        { books: { hardcover_id: 'x3' } },
       ],
       error: null,
     };
@@ -193,6 +139,7 @@ describe('getRecommended', () => {
 
     const result = await getRecommended('user-1');
 
+    expect(result.personalized).toBe(true);
     expect(result.books.find((b) => b.hardcover_id === '1')).toBeUndefined();
     expect(result.books.find((b) => b.hardcover_id === '2')).toBeDefined();
   });

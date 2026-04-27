@@ -43,6 +43,8 @@ export interface Database {
           page_count: number | null;
           genres: string[] | null;
           description: string | null;
+          rating: number | null;
+          users_read_count: number | null;
           created_at: string;
         };
         Insert: {
@@ -54,6 +56,8 @@ export interface Database {
           page_count?: number | null;
           genres?: string[] | null;
           description?: string | null;
+          rating?: number | null;
+          users_read_count?: number | null;
           created_at?: string;
         };
         Update: {
@@ -64,6 +68,8 @@ export interface Database {
           page_count?: number | null;
           genres?: string[] | null;
           description?: string | null;
+          rating?: number | null;
+          users_read_count?: number | null;
         };
       };
       user_books: {
@@ -76,6 +82,7 @@ export interface Database {
           rating: number | null;
           review: string | null;
           added_at: string;
+          started_at: string | null;
           finished_at: string | null;
         };
         Insert: {
@@ -87,6 +94,7 @@ export interface Database {
           rating?: number | null;
           review?: string | null;
           added_at?: string;
+          started_at?: string | null;
           finished_at?: string | null;
         };
         Update: {
@@ -94,6 +102,7 @@ export interface Database {
           current_page?: number;
           rating?: number | null;
           review?: string | null;
+          started_at?: string | null;
           finished_at?: string | null;
         };
       };

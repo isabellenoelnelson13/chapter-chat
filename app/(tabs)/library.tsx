@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { Shelf } from '@/types/database';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SHELVES: { key: Shelf; label: string }[] = [
   { key: 'reading', label: 'Reading' },
@@ -33,14 +34,16 @@ export default function LibraryScreen() {
 
   const userId = session?.user.id ?? '';
 
-  useEffect(() => {
-    if (!userId) return;
-    setLoading(true);
-    getShelf(userId, activeShelf)
-      .then(setBooks)
-      .catch(() => setBooks([]))
-      .finally(() => setLoading(false));
-  }, [userId, activeShelf]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      setLoading(true);
+      getShelf(userId, activeShelf)
+        .then(setBooks)
+        .catch(() => setBooks([]))
+        .finally(() => setLoading(false));
+    }, [userId, activeShelf])
+  );
 
   if (!session) return null;
 
@@ -105,6 +108,16 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle} numberOfLines={2}>{book.book.title}</Text>
         <Text style={styles.cardAuthor}>{book.book.author}</Text>
+        {book.book.rating !== null && (
+          <Text style={styles.cardMeta}>
+            ★ {book.book.rating.toFixed(1)}
+            {book.book.users_read_count
+              ? ` · ${book.book.users_read_count >= 1000
+                  ? `${(book.book.users_read_count / 1000).toFixed(0)}k`
+                  : book.book.users_read_count} readers`
+              : ''}
+          </Text>
+        )}
         {shelf === 'reading' && !!book.book.page_count && (
           <>
             <View style={styles.progressTrack}>
@@ -136,7 +149,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
   },
-  title: { fontSize: 32, fontWeight: '700', color: Colors.primary },
+  title: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.primary },
   fab: {
     width: 44,
     height: 44,
@@ -163,12 +176,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
   },
   activeTab: { backgroundColor: Colors.surface, ...Shadow.card },
-  tabText: { color: Colors.textSecondary, fontSize: 12, fontWeight: '600' },
-  activeTabText: { color: Colors.textPrimary, fontWeight: '700' },
+  tabText: { color: Colors.textSecondary, fontSize: 12, fontFamily: Fonts.semiBold },
+  activeTabText: { color: Colors.textPrimary, fontFamily: Fonts.bold },
 
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: Colors.textSecondary, fontSize: 15 },
+  emptyText: { color: Colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
 
   card: {
     flexDirection: 'row',
@@ -186,8 +199,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   cardInfo: { flex: 1, gap: 4, justifyContent: 'center' },
-  cardTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  cardAuthor: { color: Colors.textSecondary, fontSize: 13 },
+  cardTitle: { color: Colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
+  cardAuthor: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+  cardMeta: { color: Colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
   progressTrack: {
     height: 3,
     backgroundColor: Colors.progressTrack,
@@ -195,6 +209,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: 3, backgroundColor: Colors.progressFill, borderRadius: 2 },
-  progressPct: { color: Colors.textSecondary, fontSize: 12 },
-  rating: { color: Colors.primary, fontSize: 14 },
+  progressPct: { color: Colors.textSecondary, fontSize: 12, fontFamily: Fonts.regular },
+  rating: { color: Colors.primary, fontSize: 14, fontFamily: Fonts.regular },
 });

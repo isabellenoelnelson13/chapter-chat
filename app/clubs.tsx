@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/lib/auth';
 import { getMyClubs, createClub, type ClubSummary } from '@/lib/clubs';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 export default function ClubsScreen() {
   const { session } = useAuth();
@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
   },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary },
+  title: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
   newBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
   },
-  newBtnText: { color: Colors.surface, fontWeight: '600', fontSize: 14 },
+  newBtnText: { color: Colors.surface, fontFamily: Fonts.semiBold, fontSize: 14 },
   list: { padding: Spacing.lg, gap: Spacing.sm },
   card: {
     backgroundColor: Colors.surface,
@@ -166,15 +166,16 @@ const styles = StyleSheet.create({
     gap: 4,
     ...Shadow.card,
   },
-  clubName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  currentBook: { fontSize: 14, color: Colors.primary },
-  noBook: { fontSize: 14, color: Colors.textTertiary },
-  memberCount: { fontSize: 12, color: Colors.textSecondary },
+  clubName: { fontSize: 16, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  currentBook: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.primary },
+  noBook: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textTertiary },
+  memberCount: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
   emptyText: {
     textAlign: 'center',
     marginTop: 48,
     color: Colors.textSecondary,
     fontSize: 15,
+    fontFamily: Fonts.regular,
   },
   modal: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
@@ -186,8 +187,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  cancelText: { color: Colors.primary, fontSize: 16 },
+  modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  cancelText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.regular },
   form: { padding: Spacing.lg, gap: Spacing.sm },
   input: {
     backgroundColor: Colors.surface,
@@ -197,6 +198,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     fontSize: 16,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
   },
   descInput: { minHeight: 80, textAlignVertical: 'top' },
@@ -207,5 +209,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.sm,
   },
-  primaryBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: Colors.surface, fontSize: 16, fontFamily: Fonts.bold },
 });

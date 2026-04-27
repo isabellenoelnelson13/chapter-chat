@@ -16,9 +16,17 @@ jest.mock('@/lib/auth', () => ({
   })),
 }));
 
+jest.mock('@/lib/books', () => ({
+  getBookById: jest.fn().mockResolvedValue(null),
+  getBookReviews: jest.fn().mockResolvedValue([]),
+  updatePageCount: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('@/lib/userBooks', () => ({
   getUserBook: jest.fn().mockResolvedValue(null),
+  addToShelf: jest.fn().mockResolvedValue('ub-new'),
   moveShelf: jest.fn().mockResolvedValue(undefined),
+  removeFromShelf: jest.fn().mockResolvedValue(undefined),
   rateBook: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -33,8 +41,23 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ bookId: 'book-1' }),
 }));
 
-import { getUserBook, moveShelf, rateBook } from '@/lib/userBooks';
+import { getBookById, getBookReviews } from '@/lib/books';
+import { getUserBook, addToShelf, moveShelf, removeFromShelf, rateBook } from '@/lib/userBooks';
 import { createEvent } from '@/lib/activity';
+
+const mockBook = {
+  id: 'book-1',
+  hardcover_id: 'hc-1',
+  title: 'The Hobbit',
+  author: 'J.R.R. Tolkien',
+  cover_url: null,
+  page_count: 310,
+  description: 'In a hole in the ground there lived a hobbit.',
+  rating: 4.2,
+  users_read_count: 150000,
+  genres: ['Fantasy'],
+  created_at: '2026-01-01T00:00:00Z',
+};
 
 const mockReadingBook = {
   id: 'ub-1',
@@ -53,6 +76,8 @@ const mockReadingBook = {
     cover_url: null,
     page_count: 310,
     description: 'In a hole in the ground there lived a hobbit.',
+    rating: 4.2,
+    users_read_count: 150000,
   },
 };
 
@@ -65,12 +90,15 @@ const mockReadBook = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (getBookById as jest.Mock).mockResolvedValue(null);
+  (getBookReviews as jest.Mock).mockResolvedValue([]);
   (getUserBook as jest.Mock).mockResolvedValue(null);
   (createEvent as jest.Mock).mockResolvedValue(undefined);
 });
 
 describe('BookDetailScreen', () => {
   it('shows loading spinner then book info', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => {
@@ -79,14 +107,33 @@ describe('BookDetailScreen', () => {
     });
   });
 
-  it('shows book not found when getUserBook returns null', async () => {
+  it('shows book not found when getBookById returns null', async () => {
     render(<BookDetailScreen />);
     await waitFor(() => {
       expect(screen.getByText('Book not found')).toBeTruthy();
     });
   });
 
+  it('shows Hardcover community rating', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue(null);
+    render(<BookDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('hardcover-rating')).toBeTruthy();
+    });
+  });
+
+  it('shows Add to Shelf button when book is not on any shelf', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue(null);
+    render(<BookDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('add-to-shelf-btn')).toBeTruthy();
+    });
+  });
+
   it('shows Start Reading Session button on reading shelf', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => {
@@ -95,6 +142,7 @@ describe('BookDetailScreen', () => {
   });
 
   it('does not show Start Reading Session on read shelf', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadBook);
     render(<BookDetailScreen />);
     await waitFor(() => {
@@ -104,6 +152,7 @@ describe('BookDetailScreen', () => {
   });
 
   it('shows star rating row on read shelf', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadBook);
     render(<BookDetailScreen />);
     await waitFor(() => {
@@ -112,6 +161,7 @@ describe('BookDetailScreen', () => {
   });
 
   it('tapping a star calls rateBook', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue({ ...mockReadBook, rating: null });
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('star-3'));
@@ -121,21 +171,22 @@ describe('BookDetailScreen', () => {
     });
   });
 
-  it('tapping Move to shelf calls moveShelf and navigates back', async () => {
+  it('tapping Move to shelf calls moveShelf', async () => {
     jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
-      (_opts: any, callback: (index: number) => void) => { callback(1); } // 1 = "Reading"
+      (_opts: any, callback: (index: number) => void) => { callback(1); }
     );
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('move-shelf-btn'));
     fireEvent.press(screen.getByTestId('move-shelf-btn'));
     await waitFor(() => {
       expect(moveShelf).toHaveBeenCalledWith('ub-1', 'reading');
-      expect(mockBack).toHaveBeenCalled();
     });
   });
 
   it('Start Reading Session navigates to session screen', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('start-session-btn'));
@@ -146,6 +197,7 @@ describe('BookDetailScreen', () => {
 
 describe('Activity events', () => {
   it('share progress button is visible when shelf is reading', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => {
@@ -154,6 +206,7 @@ describe('Activity events', () => {
   });
 
   it('share progress button is hidden when shelf is not reading', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByText('The Hobbit'));
@@ -161,6 +214,7 @@ describe('Activity events', () => {
   });
 
   it('tapping share progress button calls createEvent with shared_session', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('share-progress-btn'));
@@ -174,6 +228,7 @@ describe('Activity events', () => {
   });
 
   it('button label changes to Shared ✓ after tap', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('share-progress-btn'));
@@ -185,8 +240,9 @@ describe('Activity events', () => {
 
   it('tapping Move to shelf to reading calls createEvent with started_book', async () => {
     jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
-      (_opts: any, callback: (index: number) => void) => { callback(1); } // 1 = "Reading"
+      (_opts: any, callback: (index: number) => void) => { callback(1); }
     );
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('move-shelf-btn'));
@@ -198,11 +254,12 @@ describe('Activity events', () => {
 
   it('tapping Move to shelf to read calls createEvent with finished_book', async () => {
     jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
-      (_opts: any, callback: (index: number) => void) => { callback(3); } // 3 = "Read"
+      (_opts: any, callback: (index: number) => void) => { callback(3); }
     );
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock)
-      .mockResolvedValueOnce(mockReadingBook) // initial load
-      .mockResolvedValue({ ...mockReadingBook, shelf: 'read', rating: 4, review: 'Great' }); // refetch after moveShelf
+      .mockResolvedValueOnce(mockReadingBook)
+      .mockResolvedValue({ ...mockReadingBook, shelf: 'read', rating: 4, review: 'Great' });
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('move-shelf-btn'));
     fireEvent.press(screen.getByTestId('move-shelf-btn'));
@@ -214,10 +271,26 @@ describe('Activity events', () => {
     });
   });
 
+  it('tapping Remove from library calls removeFromShelf and navigates back', async () => {
+    jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
+      (_opts: any, callback: (index: number) => void) => { callback(5); } // 5 = "Remove from library"
+    );
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('move-shelf-btn'));
+    fireEvent.press(screen.getByTestId('move-shelf-btn'));
+    await waitFor(() => {
+      expect(removeFromShelf).toHaveBeenCalledWith('ub-1');
+      expect(mockBack).toHaveBeenCalled();
+    });
+  });
+
   it('tapping Move to shelf to want calls createEvent with added_to_shelf', async () => {
     jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
-      (_opts: any, callback: (index: number) => void) => { callback(2); } // 2 = "Want to Read"
+      (_opts: any, callback: (index: number) => void) => { callback(2); }
     );
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue(mockReadingBook);
     render(<BookDetailScreen />);
     await waitFor(() => screen.getByTestId('move-shelf-btn'));

@@ -123,7 +123,6 @@ describe('SessionScreen', () => {
         durationSeconds: 1800,
       })
     ));
-    expect(mockBack).toHaveBeenCalled();
   });
 });
 

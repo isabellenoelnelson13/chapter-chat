@@ -47,7 +47,9 @@ describe('ManualSessionScreen', () => {
     await waitFor(() => screen.getByText('The Hobbit'));
     expect(screen.getByPlaceholderText('Start page')).toBeTruthy();
     expect(screen.getByPlaceholderText('End page')).toBeTruthy();
-    expect(screen.getByPlaceholderText('HH:MM')).toBeTruthy();
+    expect(screen.getByText('hr')).toBeTruthy();
+    expect(screen.getByText('min')).toBeTruthy();
+    expect(screen.getByText('sec')).toBeTruthy();
   });
 
   it('shows error when end page is not greater than start page', async () => {
@@ -55,29 +57,31 @@ describe('ManualSessionScreen', () => {
     await waitFor(() => screen.getByText('Log Session'));
     fireEvent.changeText(screen.getByPlaceholderText('Start page'), '80');
     fireEvent.changeText(screen.getByPlaceholderText('End page'), '50');
-    fireEvent.changeText(screen.getByPlaceholderText('HH:MM'), '0:30');
+    const timeInputs = screen.getAllByPlaceholderText('0');
+    fireEvent.changeText(timeInputs[1], '30'); // minutes input
     fireEvent.press(screen.getByText('Log Session'));
     expect(screen.getByText('End page must be greater than start page')).toBeTruthy();
     expect(createSession).not.toHaveBeenCalled();
   });
 
-  it('shows error when time format is invalid', async () => {
+  it('shows error when time is zero', async () => {
     render(<ManualSessionScreen />);
     await waitFor(() => screen.getByText('Log Session'));
     fireEvent.changeText(screen.getByPlaceholderText('Start page'), '50');
     fireEvent.changeText(screen.getByPlaceholderText('End page'), '80');
-    fireEvent.changeText(screen.getByPlaceholderText('HH:MM'), 'not-a-time');
+    // Leave all time inputs at default (0)
     fireEvent.press(screen.getByText('Log Session'));
-    expect(screen.getByText('Enter time as H:MM or HH:MM')).toBeTruthy();
+    expect(screen.getByText('Time must be greater than 0')).toBeTruthy();
     expect(createSession).not.toHaveBeenCalled();
   });
 
-  it('saves session and navigates back on valid input', async () => {
+  it('saves session on valid input', async () => {
     render(<ManualSessionScreen />);
     await waitFor(() => screen.getByText('Log Session'));
     fireEvent.changeText(screen.getByPlaceholderText('Start page'), '50');
     fireEvent.changeText(screen.getByPlaceholderText('End page'), '80');
-    fireEvent.changeText(screen.getByPlaceholderText('HH:MM'), '0:30');
+    const timeInputs = screen.getAllByPlaceholderText('0');
+    fireEvent.changeText(timeInputs[1], '30'); // minutes input = 30 min
     fireEvent.press(screen.getByText('Log Session'));
     await waitFor(() => expect(createSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -88,6 +92,5 @@ describe('ManualSessionScreen', () => {
         durationSeconds: 1800,
       })
     ));
-    expect(mockBack).toHaveBeenCalled();
   });
 });

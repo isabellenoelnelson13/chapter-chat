@@ -27,7 +27,7 @@ import {
 } from '@/lib/clubs';
 import { searchUsers, type UserSearchResult } from '@/lib/follows';
 import { searchBooks, upsertBook, type BookSearchResult } from '@/lib/books';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 function pct(current: number, total: number | null): string {
   if (!total) return '—';
@@ -369,12 +369,12 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     gap: 4,
   },
-  backText: { color: Colors.primary, fontSize: 16, fontWeight: '600' },
+  backText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.semiBold },
   scroll: { padding: Spacing.lg, gap: Spacing.md },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary },
-  description: { fontSize: 14, color: Colors.textSecondary },
-  notFound: { fontSize: 16, color: Colors.textSecondary },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginTop: Spacing.sm },
+  title: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  description: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
+  notFound: { fontSize: 16, fontFamily: Fonts.regular, color: Colors.textSecondary },
+  sectionTitle: { fontSize: 17, fontFamily: Fonts.bold, color: Colors.textPrimary, marginTop: Spacing.sm },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   memberAvatar: {
     width: 36,
@@ -384,10 +384,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  memberInitial: { color: Colors.surface, fontWeight: '700', fontSize: 14 },
-  memberName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  memberRole: { fontSize: 12, color: Colors.textSecondary },
-  memberPct: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  memberInitial: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 14 },
+  memberName: { fontSize: 14, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
+  memberRole: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
+  memberPct: { fontSize: 14, fontFamily: Fonts.bold, color: Colors.primary },
   secondaryBtn: {
     borderWidth: 1.5,
     borderColor: Colors.primary,
@@ -395,10 +395,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  secondaryBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 15 },
+  secondaryBtnText: { color: Colors.primary, fontFamily: Fonts.semiBold, fontSize: 15 },
   bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  noBookText: { fontSize: 15, color: Colors.textTertiary, flex: 1 },
-  changeBookText: { color: Colors.primary, fontSize: 13, fontWeight: '600', marginTop: 6 },
+  noBookText: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textTertiary, flex: 1 },
+  changeBookText: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold, marginTop: 6 },
   currentBookCard: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   currentBookInfo: { flex: 1, justifyContent: 'flex-start', paddingTop: 2 },
-  currentBookTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  currentBookTitle: { fontSize: 15, fontFamily: Fonts.bookTitle, color: Colors.textPrimary },
   bookSearchResult: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
@@ -434,16 +434,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   bookSearchInfo: { flex: 1, gap: 3 },
-  searchResultPages: { fontSize: 12, color: Colors.textTertiary },
-  historyItem: { fontSize: 14, color: Colors.textSecondary },
+  searchResultPages: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textTertiary },
+  historyItem: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
   discussionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: Spacing.sm,
   },
-  newPostText: { color: Colors.primary, fontWeight: '600', fontSize: 14 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary },
+  newPostText: { color: Colors.primary, fontFamily: Fonts.semiBold, fontSize: 14 },
+  emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
   postCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,
@@ -451,9 +451,9 @@ const styles = StyleSheet.create({
     gap: 4,
     ...Shadow.card,
   },
-  postUsername: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  postBody: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  replyCount: { fontSize: 12, color: Colors.textTertiary },
+  postUsername: { fontSize: 13, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  postBody: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, lineHeight: 20 },
+  replyCount: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textTertiary },
   modal: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
     flexDirection: 'row',
@@ -464,8 +464,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  cancelText: { color: Colors.primary, fontSize: 16 },
+  modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  cancelText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.regular },
   modalBody: { padding: Spacing.lg, gap: Spacing.sm },
   input: {
     backgroundColor: Colors.surface,
@@ -475,6 +475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     fontSize: 16,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
   },
   postInput: { minHeight: 120, textAlignVertical: 'top' },
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
   },
-  primaryBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: Colors.surface, fontSize: 16, fontFamily: Fonts.bold },
   searchResult: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,
@@ -492,6 +493,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  searchResultText: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  searchResultSub: { fontSize: 13, color: Colors.textSecondary },
+  searchResultText: { fontSize: 15, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
+  searchResultSub: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary },
 });

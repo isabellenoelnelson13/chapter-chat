@@ -12,30 +12,57 @@ export interface UserBookWithBook {
   rating: number | null;
   review: string | null;
   added_at: string;
+  started_at: string | null;
   finished_at: string | null;
-  book: Pick<BookRow, 'id' | 'title' | 'author' | 'cover_url' | 'page_count'> & {
+  book: Pick<BookRow, 'id' | 'title' | 'author' | 'cover_url' | 'page_count' | 'rating' | 'users_read_count'> & {
     description: string | null;
   };
 }
 
-const BOOK_SELECT = '*, book:books(id, title, author, cover_url, page_count, description)';
+const BOOK_SELECT = '*, book:books(id, title, author, cover_url, page_count, description, rating, users_read_count)';
+
+export async function removeFromShelf(userBookId: string): Promise<void> {
+  const { error } = await supabase
+    .from('user_books')
+    .delete()
+    .eq('id', userBookId);
+  if (error) throw error;
+}
 
 export async function addToShelf(userId: string, bookId: string, shelf: Shelf): Promise<string> {
+  const now = new Date().toISOString();
+  const row: Record<string, unknown> = { user_id: userId, book_id: bookId, shelf, current_page: 0 };
+  if (shelf === 'reading') row.started_at = now;
+  if (shelf === 'read') { row.started_at = now; row.finished_at = now; }
   const { data, error } = await supabase
     .from('user_books')
-    .insert({ user_id: userId, book_id: bookId, shelf, current_page: 0 })
+    .insert(row)
     .select('id')
     .single();
   if (error) throw error;
   return data.id;
 }
 
-export async function moveShelf(userBookId: string, shelf: Shelf, finishedAt?: string): Promise<void> {
+export async function moveShelf(userBookId: string, shelf: Shelf): Promise<void> {
+  const now = new Date().toISOString();
   const update: Record<string, unknown> = { shelf };
-  if (shelf === 'read') update.finished_at = finishedAt ?? new Date().toISOString();
+  if (shelf === 'reading') update.started_at = now;
+  if (shelf === 'read') update.finished_at = now;
   const { error } = await supabase
     .from('user_books')
     .update(update)
+    .eq('id', userBookId);
+  if (error) throw error;
+}
+
+export async function updateReadDates(
+  userBookId: string,
+  startedAt: string | null,
+  finishedAt: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_books')
+    .update({ started_at: startedAt, finished_at: finishedAt })
     .eq('id', userBookId);
   if (error) throw error;
 }

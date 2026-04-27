@@ -27,7 +27,7 @@ import {
   updatePrivacy,
   type UserProfile,
 } from '@/lib/profile';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 import {
   getFollowRequests,
   approveFollowRequest,
@@ -52,7 +52,7 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (!userId) return;
       setLoading(true);
-      Promise.all([
+      Promise.allSettled([
         getProfile(userId),
         getStreak(userId),
         getYearlyGoalProgress(userId),
@@ -62,22 +62,21 @@ export default function ProfileScreen() {
         getShelf(userId, 'read'),
         getShelf(userId, 'dnf'),
         getFollowRequests(userId),
-      ])
-        .then(([p, s, yg, history, reading, want, read, dnf, requests]) => {
-          setProfile(p);
-          setStreak(s);
-          setYearlyGoal(yg);
-          setPagesThisYear(history.reduce((sum, d) => sum + d.pages, 0));
-          setShelfCounts({
-            reading: reading.length,
-            want: want.length,
-            read: read.length,
-            dnf: dnf.length,
-          });
-          setFollowRequests(requests);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
+      ]).then(([p, s, yg, history, reading, want, read, dnf, requests]) => {
+        if (p.status === 'fulfilled') setProfile(p.value);
+        if (s.status === 'fulfilled') setStreak(s.value);
+        if (yg.status === 'fulfilled') setYearlyGoal(yg.value);
+        if (history.status === 'fulfilled')
+          setPagesThisYear(history.value.reduce((sum, d) => sum + d.pages, 0));
+        setShelfCounts({
+          reading: reading.status === 'fulfilled' ? reading.value.length : 0,
+          want: want.status === 'fulfilled' ? want.value.length : 0,
+          read: read.status === 'fulfilled' ? read.value.length : 0,
+          dnf: dnf.status === 'fulfilled' ? dnf.value.length : 0,
+        });
+        if (requests.status === 'fulfilled') setFollowRequests(requests.value);
+        setLoading(false);
+      });
     }, [userId])
   );
 
@@ -269,9 +268,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  initial: { fontSize: 32, fontWeight: '700', color: Colors.surface },
-  username: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary },
-  bio: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
+  initial: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.surface },
+  username: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  bio: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, textAlign: 'center' },
 
   row: { flexDirection: 'row', gap: Spacing.sm },
   statCard: {
@@ -283,8 +282,8 @@ const styles = StyleSheet.create({
     gap: 4,
     ...Shadow.card,
   },
-  statValue: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
-  statLabel: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center' },
+  statValue: { fontSize: 20, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  statLabel: { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textSecondary, textAlign: 'center' },
 
   card: {
     backgroundColor: Colors.surface,
@@ -292,9 +291,9 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     ...Shadow.card,
   },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
-  goalText: { fontSize: 14, color: Colors.textSecondary, marginBottom: 8 },
-  goalEmpty: { fontSize: 14, color: Colors.textTertiary },
+  cardTitle: { fontSize: 15, fontFamily: Fonts.bold, color: Colors.textPrimary, marginBottom: 8 },
+  goalText: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, marginBottom: 8 },
+  goalEmpty: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textTertiary },
   progressTrack: {
     height: 8,
     backgroundColor: Colors.progressTrack,
@@ -312,9 +311,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: Colors.surface,
   },
-  pillText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
+  pillText: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold },
 
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  sectionTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
   settingsCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
@@ -328,9 +327,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
   },
-  settingLabel: { fontSize: 15, color: Colors.textPrimary },
+  settingLabel: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textPrimary },
   divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: Spacing.md },
-  signOut: { fontSize: 15, color: Colors.error, fontWeight: '600' },
+  signOut: { fontSize: 15, color: Colors.error, fontFamily: Fonts.semiBold },
 
   requestsCard: {
     backgroundColor: Colors.surface,
@@ -340,10 +339,10 @@ const styles = StyleSheet.create({
     ...Shadow.card,
   },
   requestsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  requestsTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  requestsTitle: { fontSize: 15, fontFamily: Fonts.bold, color: Colors.textPrimary },
   requestsBadge: {
     color: Colors.primary,
-    fontWeight: '700',
+    fontFamily: Fonts.bold,
     fontSize: 15,
   },
   requestRow: {
@@ -359,17 +358,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  requestInitial: { fontSize: 14, fontWeight: '700', color: Colors.surface },
+  requestInitial: { fontSize: 14, fontFamily: Fonts.bold, color: Colors.surface },
   requestInfo: { flex: 1 },
-  requestUsername: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  requestBio: { fontSize: 12, color: Colors.textSecondary },
+  requestUsername: { fontSize: 14, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
+  requestBio: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
   acceptBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  acceptBtnText: { color: Colors.surface, fontWeight: '700', fontSize: 12 },
+  acceptBtnText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 12 },
   declineBtn: {
     borderWidth: 1.5,
     borderColor: Colors.border,
@@ -377,5 +376,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  declineBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 12 },
+  declineBtnText: { color: Colors.textSecondary, fontFamily: Fonts.semiBold, fontSize: 12 },
 });

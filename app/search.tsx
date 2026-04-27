@@ -17,7 +17,7 @@ import { useAuth } from '@/lib/auth';
 import { searchBooks, upsertBook, type BookSearchResult } from '@/lib/books';
 import { addToShelf } from '@/lib/userBooks';
 import { Shelf } from '@/types/database';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SHELF_OPTIONS = ['Cancel', 'Reading', 'Want to Read', 'Read', 'Did Not Finish'] as const;
 const SHELF_KEYS: (Shelf | null)[] = [null, 'reading', 'want', 'read', 'dnf'];
@@ -144,9 +144,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
+    fontFamily: Fonts.regular,
     ...Shadow.card,
   },
-  cancel: { color: Colors.primary, fontSize: 15, fontWeight: '600' },
+  cancel: { color: Colors.primary, fontSize: 15, fontFamily: Fonts.semiBold },
   spinner: { marginVertical: Spacing.md },
   list: { padding: Spacing.md, gap: Spacing.sm },
   result: {
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   info: { flex: 1, gap: 4, justifyContent: 'center' },
-  title: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  author: { color: Colors.textSecondary, fontSize: 13 },
-  pages: { color: Colors.textTertiary, fontSize: 12 },
+  title: { color: Colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
+  author: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+  pages: { color: Colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
 });

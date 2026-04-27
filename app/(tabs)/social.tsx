@@ -33,7 +33,7 @@ import {
   type ActivityEvent,
   type ActivityComment,
 } from '@/lib/activity';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -406,7 +406,7 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { padding: Spacing.lg, gap: Spacing.lg },
-  title: { fontSize: 32, fontWeight: '700', color: Colors.primary },
+  title: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.primary },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   clubsLink: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
     fontSize: 15,
   },
   searchBar: {
@@ -427,9 +427,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     ...Shadow.card,
   },
-  searchInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  emptyText: { fontSize: 14, color: Colors.textSecondary },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: Fonts.regular, color: Colors.textPrimary },
+  sectionTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -447,10 +447,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  userInitial: { fontSize: 16, fontWeight: '700', color: Colors.surface },
+  userInitial: { fontSize: 16, fontFamily: Fonts.bold, color: Colors.surface },
   userInfo: { flex: 1 },
-  userName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  userBio: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  userName: { fontSize: 15, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
+  userBio: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, marginTop: 2 },
   followBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.xl,
@@ -462,8 +462,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.primary,
   },
-  followBtnText: { color: Colors.surface, fontWeight: '700', fontSize: 13 },
-  followBtnTextOutlined: { color: Colors.primary },
+  followBtnText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 13 },
+  followBtnTextOutlined: { color: Colors.primary, fontFamily: Fonts.bold },
 });
 
 const feedStyles = StyleSheet.create({
@@ -483,15 +483,15 @@ const feedStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarInitial: { fontSize: 16, fontWeight: '700', color: Colors.surface },
-  headline: { fontSize: 14, color: Colors.textPrimary, lineHeight: 20 },
-  username: { fontWeight: '700' },
-  bookTitle: { fontWeight: '600', color: Colors.primary },
-  timestamp: { fontSize: 12, color: Colors.textTertiary },
-  snippet: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
+  avatarInitial: { fontSize: 16, fontFamily: Fonts.bold, color: Colors.surface },
+  headline: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textPrimary, lineHeight: 20 },
+  username: { fontFamily: Fonts.bold },
+  bookTitle: { fontFamily: Fonts.bookTitle, color: Colors.primary },
+  timestamp: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textTertiary },
+  snippet: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, lineHeight: 18 },
   actions: { flexDirection: 'row', gap: Spacing.md, paddingTop: 4 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actionCount: { fontSize: 13, color: Colors.textSecondary },
+  actionCount: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary },
 });
 
 const modalStyles = StyleSheet.create({
@@ -505,10 +505,10 @@ const modalStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  title: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  title: { fontSize: 17, fontFamily: Fonts.bold, color: Colors.textPrimary },
   list: { flex: 1 },
   listContent: { padding: Spacing.lg, gap: Spacing.md },
-  empty: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginTop: 24 },
+  empty: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, textAlign: 'center', marginTop: 24 },
   commentRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
   commentAvatar: {
     width: 32,
@@ -518,10 +518,10 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  commentInitial: { fontSize: 12, fontWeight: '700', color: Colors.surface },
-  commentUsername: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  commentBody: { fontSize: 14, color: Colors.textPrimary, marginTop: 2 },
-  commentTime: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
+  commentInitial: { fontSize: 12, fontFamily: Fonts.bold, color: Colors.surface },
+  commentUsername: { fontSize: 13, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  commentBody: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textPrimary, marginTop: 2 },
+  commentTime: { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textTertiary, marginTop: 2 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,6 +538,7 @@ const modalStyles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     fontSize: 15,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
     borderWidth: 1,
     borderColor: Colors.border,

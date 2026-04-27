@@ -2,6 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import LibraryScreen from '@/app/(tabs)/library';
 
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: (cb: () => void) => {
+    const { useEffect } = require('react');
+    useEffect(() => { cb(); }, [cb]);
+  },
+}));
+
 jest.mock('@/lib/auth', () => ({
   useAuth: jest.fn(() => ({ session: { user: { id: 'user-1' } } })),
 }));
@@ -17,7 +24,7 @@ const mockBooks = [
     review: null,
     added_at: '2026-04-01T00:00:00Z',
     finished_at: null,
-    book: { id: 'book-1', title: 'The Hobbit', author: 'Tolkien', cover_url: null, page_count: 310, description: null },
+    book: { id: 'book-1', title: 'The Hobbit', author: 'Tolkien', cover_url: null, page_count: 310, description: null, rating: 4.2, users_read_count: 150000 },
   },
 ];
 

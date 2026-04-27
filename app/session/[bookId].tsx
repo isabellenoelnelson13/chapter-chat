@@ -8,7 +8,18 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  runOnJS,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +27,7 @@ import { useAuth } from '@/lib/auth';
 import { getUserBook, type UserBookWithBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
 import { createEvent } from '@/lib/activity';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 type Phase = 'setup' | 'running' | 'paused' | 'finish';
 
@@ -39,6 +50,12 @@ export default function SessionScreen() {
   const [seconds, setSeconds] = useState(0);
   const [saveError, setSaveError] = useState('');
   const [shareToFeed, setShareToFeed] = useState(false);
+  const successOpacity = useSharedValue(0);
+  const successScale = useSharedValue(0.8);
+  const successStyle = useAnimatedStyle(() => ({
+    opacity: successOpacity.value,
+    transform: [{ scale: successScale.value }],
+  }));
   const startedAtRef = useRef<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -114,7 +131,18 @@ export default function SessionScreen() {
           duration_seconds: seconds,
         });
       }
-      router.back();
+      successOpacity.value = withSequence(
+        withTiming(1, { duration: 250 }),
+        withTiming(1, { duration: 800 }),
+        withTiming(0, { duration: 300 }, (finished) => {
+          if (finished) runOnJS(router.back)();
+        })
+      );
+      successScale.value = withSequence(
+        withTiming(1, { duration: 250 }),
+        withTiming(1, { duration: 800 }),
+        withTiming(0.8, { duration: 300 })
+      );
     } catch {
       Alert.alert('Error', 'Could not save session. Please try again.');
     }
@@ -129,6 +157,11 @@ export default function SessionScreen() {
   }
 
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
@@ -193,6 +226,8 @@ export default function SessionScreen() {
             value={endPage}
             onChangeText={setEndPage}
             keyboardType="number-pad"
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
           />
           {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
           <View style={styles.shareRow}>
@@ -210,7 +245,15 @@ export default function SessionScreen() {
           </TouchableOpacity>
         </View>
       )}
+      <Animated.View style={[styles.successOverlay, successStyle]} pointerEvents="none">
+        <View style={styles.successBadge}>
+          <Ionicons name="checkmark-circle" size={48} color={Colors.primary} />
+          <Text style={styles.successText}>Session saved!</Text>
+        </View>
+      </Animated.View>
     </SafeAreaView>
+    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -223,18 +266,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: Spacing.sm },
-  backText: { color: Colors.textSecondary, fontSize: 15 },
+  backText: { color: Colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
   bookTitle: {
     color: Colors.primary,
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
     marginBottom: Spacing.xl,
   },
   timerArea: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   timer: {
     color: Colors.primary,
     fontSize: 72,
-    fontWeight: '200',
+    fontFamily: Fonts.regular,
     fontVariant: ['tabular-nums'],
   },
   controls: { gap: Spacing.sm },
@@ -247,6 +290,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     fontSize: 16,
+    fontFamily: Fonts.regular,
     ...Shadow.card,
   },
   primaryBtn: {
@@ -255,7 +299,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
   },
-  primaryBtnText: { color: Colors.surface, fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: Colors.surface, fontSize: 16, fontFamily: Fonts.bold },
   secondaryBtn: {
     borderWidth: 1,
     borderColor: Colors.border,
@@ -264,14 +308,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.surface,
   },
-  secondaryBtnText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
+  secondaryBtnText: { color: Colors.textPrimary, fontSize: 16, fontFamily: Fonts.semiBold },
   logManuallyText: {
     color: Colors.textSecondary,
     fontSize: 13,
+    fontFamily: Fonts.regular,
     textAlign: 'center',
     marginTop: 4,
   },
-  errorText: { color: Colors.error, fontSize: 13 },
+  errorText: { color: Colors.error, fontSize: 13, fontFamily: Fonts.regular },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successBadge: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.xl * 1.5,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    ...Shadow.card,
+  },
+  successText: { color: Colors.textPrimary, fontSize: 16, fontFamily: Fonts.bold },
   shareRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -283,5 +343,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  shareLabel: { fontSize: 15, color: Colors.textPrimary },
+  shareLabel: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textPrimary },
 });

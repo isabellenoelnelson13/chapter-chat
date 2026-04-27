@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { getTodayStats, estimateDaysRemaining, type TodayStats } from '@/lib/stats';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = SCREEN_WIDTH - 2 * Spacing.lg;
@@ -214,8 +214,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  greeting: { fontSize: 28, fontWeight: '700', color: Colors.primary },
-  date: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
+  greeting: { fontSize: 28, fontFamily: Fonts.bold, color: Colors.primary },
+  date: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, marginTop: 2 },
   profileBtn: { padding: 4 },
 
   bookCard: {
@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
   bookInfo: { flex: 1, gap: 6 },
-  bookTitle: { color: Colors.surface, fontSize: 17, fontWeight: '700' },
-  bookAuthor: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
+  bookTitle: { color: Colors.surface, fontSize: 17, fontFamily: Fonts.bookTitle },
+  bookAuthor: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontFamily: Fonts.regular },
   progressTrack: {
     height: 4,
     backgroundColor: 'rgba(255,255,255,0.3)',
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: 4, backgroundColor: Colors.surface, borderRadius: 2 },
-  progressText: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
+  progressText: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontFamily: Fonts.regular },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 4,
   },
-  startBtnText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
+  startBtnText: { color: Colors.primary, fontFamily: Fonts.bold, fontSize: 14 },
 
   emptyCard: {
     backgroundColor: Colors.surface,
@@ -264,8 +264,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     ...Shadow.card,
   },
-  emptyText: { color: Colors.textPrimary, fontSize: 18, fontWeight: '600' },
-  emptySubtext: { color: Colors.textSecondary, fontSize: 14 },
+  emptyText: { color: Colors.textPrimary, fontSize: 18, fontFamily: Fonts.semiBold },
+  emptySubtext: { color: Colors.textSecondary, fontSize: 14, fontFamily: Fonts.regular },
 
   dotsRow: {
     flexDirection: 'row',
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: Colors.primary },
   dotInactive: { borderWidth: 1.5, borderColor: Colors.primary, backgroundColor: 'transparent' },
 
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  sectionTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
   statsRow: { flexDirection: 'row', gap: Spacing.sm },
   statCard: {
     flex: 1,
@@ -288,6 +288,6 @@ const styles = StyleSheet.create({
     gap: 6,
     ...Shadow.card,
   },
-  statValue: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
-  statLabel: { fontSize: 12, color: Colors.textSecondary },
+  statValue: { fontSize: 22, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  statLabel: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
 });

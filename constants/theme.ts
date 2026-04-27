@@ -1,3 +1,12 @@
+export const Fonts = {
+  regular: 'Quicksand_400Regular',
+  medium: 'Quicksand_500Medium',
+  semiBold: 'Quicksand_600SemiBold',
+  bold: 'Quicksand_700Bold',
+  bookTitle: 'Lora_600SemiBold',
+  bookBody: 'Lora_400Regular',
+};
+
 export const Colors = {
   background: '#EEEEF8',
   surface: '#FFFFFF',

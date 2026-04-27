@@ -19,7 +19,7 @@ import {
   unfollowUser,
   cancelFollowRequest,
 } from '@/lib/follows';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 export default function UserProfileScreen() {
   const { userId: targetUserId } = useLocalSearchParams<{ userId: string }>();
@@ -156,9 +156,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  initial: { fontSize: 32, fontWeight: '700', color: Colors.surface },
-  username: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary },
-  bio: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
+  initial: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.surface },
+  username: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
+  bio: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, textAlign: 'center' },
   followBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.xl,
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.primary,
   },
-  followBtnText: { color: Colors.surface, fontWeight: '700', fontSize: 15 },
-  followBtnTextOutlined: { color: Colors.primary },
+  followBtnText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 15 },
+  followBtnTextOutlined: { color: Colors.primary, fontFamily: Fonts.bold },
   pillRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -186,6 +186,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: Colors.surface,
   },
-  pillText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
-  privateLabel: { fontSize: 15, color: Colors.textSecondary },
+  pillText: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold },
+  privateLabel: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textSecondary },
 });

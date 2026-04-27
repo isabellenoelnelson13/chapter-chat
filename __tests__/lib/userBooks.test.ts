@@ -74,12 +74,15 @@ describe('addToShelf', () => {
     testState.builderResolve = { data: { id: 'ub-1' }, error: null };
     const id = await addToShelf('user-1', 'book-1', 'reading');
     expect(id).toBe('ub-1');
-    expect(testState.mockBuilder.insert).toHaveBeenCalledWith({
-      user_id: 'user-1',
-      book_id: 'book-1',
-      shelf: 'reading',
-      current_page: 0,
-    });
+    expect(testState.mockBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'user-1',
+        book_id: 'book-1',
+        shelf: 'reading',
+        current_page: 0,
+        started_at: expect.any(String),
+      })
+    );
   });
 
   it('throws on Supabase error', async () => {

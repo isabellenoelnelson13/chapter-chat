@@ -7,41 +7,33 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
-  ActionSheetIOS,
   Alert,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/lib/auth';
-import { getTrending, getBooksByGenre, getRecommended } from '@/lib/discover';
+import { getTrending, getRecommended, type TrendingPeriod } from '@/lib/discover';
 import { upsertBook, type BookSearchResult } from '@/lib/books';
-import { addToShelf } from '@/lib/userBooks';
-import { Shelf } from '@/types/database';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
-const SHELF_OPTIONS = ['Cancel', 'Reading', 'Want to Read', 'Read', 'Did Not Finish'] as const;
-const SHELF_KEYS: (Shelf | null)[] = [null, 'reading', 'want', 'read', 'dnf'];
-
-const GENRES = [
-  'Fantasy',
-  'Romance',
-  'Thriller',
-  'Sci-Fi',
-  'Mystery',
-  'Historical Fiction',
-  'Literary Fiction',
-  'Non-Fiction',
+const PERIODS: { label: string; value: TrendingPeriod }[] = [
+  { label: 'Last Month', value: 'last_month' },
+  { label: '3 Months', value: '3_months' },
+  { label: '1 Year', value: '1_year' },
+  { label: 'All Time', value: 'all_time' },
 ];
 
 type Tab = 'trending' | 'for_you';
 
 export default function DiscoverScreen() {
   const { session } = useAuth();
+  const router = useRouter();
   const userId = session?.user.id ?? '';
 
   const [activeTab, setActiveTab] = useState<Tab>('trending');
-  const [activeGenre, setActiveGenre] = useState<string | null>(null);
+  const [activePeriod, setActivePeriod] = useState<TrendingPeriod>('all_time');
   const [books, setBooks] = useState<BookSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPersonalized, setIsPersonalized] = useState(false);
@@ -55,9 +47,7 @@ export default function DiscoverScreen() {
         setBooks(result.books);
         setIsPersonalized(result.personalized);
       } else {
-        const results = activeGenre
-          ? await getBooksByGenre(activeGenre)
-          : await getTrending();
+        const results = await getTrending(activePeriod);
         setBooks(results);
       }
     } catch {
@@ -65,50 +55,35 @@ export default function DiscoverScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userId, activeTab, activeGenre]);
+  }, [userId, activeTab, activePeriod]);
 
   // Reload on screen focus (handles navigating back to this tab)
   useFocusEffect(useCallback(() => { loadBooks(); }, [loadBooks]));
 
-  // Reload when tab or genre selection changes, skipping the initial render
+  // Reload when tab or period selection changes, skipping the initial render
   // (which is already handled by useFocusEffect above)
   const skipFirstRef = useRef(true);
   useEffect(() => {
     if (skipFirstRef.current) { skipFirstRef.current = false; return; }
     loadBooks();
-  }, [activeTab, activeGenre]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, activePeriod]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    setActiveGenre(null);
+    setActivePeriod('all_time');
   };
 
-  const handleGenrePress = (genre: string) => {
-    if (activeGenre === genre) {
-      setActiveGenre(null);
-    } else {
-      setActiveGenre(genre);
+  const handlePeriodPress = (period: TrendingPeriod) => {
+    setActivePeriod(period);
+  };
+
+  const handleBookPress = async (book: BookSearchResult) => {
+    try {
+      const bookId = await upsertBook(book);
+      router.push(`/book/${bookId}`);
+    } catch {
+      Alert.alert('Error', 'Could not open book. Please try again.');
     }
-  };
-
-  const handleBookPress = (book: BookSearchResult) => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: [...SHELF_OPTIONS],
-        cancelButtonIndex: 0,
-        title: `Add "${book.title}" to...`,
-      },
-      async (buttonIndex) => {
-        const shelf = SHELF_KEYS[buttonIndex];
-        if (!shelf) return;
-        try {
-          const bookId = await upsertBook(book);
-          await addToShelf(userId, bookId, shelf);
-        } catch {
-          Alert.alert('Error', 'Could not add book. Please try again.');
-        }
-      }
-    );
   };
 
   if (!session) return null;
@@ -139,22 +114,23 @@ export default function DiscoverScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Genre pills — Trending mode only */}
+      {/* Period pills — Trending mode only */}
       {activeTab === 'trending' && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.pillRow}
           contentContainerStyle={styles.genreRow}
         >
-          {GENRES.map((genre) => (
+          {PERIODS.map(({ label, value }) => (
             <TouchableOpacity
-              key={genre}
-              testID={`genre-pill-${genre}`}
-              style={[styles.genrePill, activeGenre === genre && styles.activeGenrePill]}
-              onPress={() => handleGenrePress(genre)}
+              key={value}
+              testID={`period-pill-${value}`}
+              style={[styles.genrePill, activePeriod === value && styles.activeGenrePill]}
+              onPress={() => handlePeriodPress(value)}
             >
-              <Text style={[styles.genreText, activeGenre === genre && styles.activeGenreText]}>
-                {genre}
+              <Text style={[styles.genreText, activePeriod === value && styles.activeGenreText]}>
+                {label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -192,7 +168,7 @@ export default function DiscoverScreen() {
                 <Text style={styles.cardAuthor}>{item.author}</Text>
                 {item.rating !== null && (
                   <Text style={styles.cardMeta}>
-                    ★ {item.rating.toFixed(1)} · {(item.users_read_count / 1000).toFixed(0)}k readers
+                    ★ {item.rating.toFixed(1)} · {item.users_read_count >= 1000 ? `${(item.users_read_count / 1000).toFixed(0)}k` : item.users_read_count} readers
                   </Text>
                 )}
               </View>
@@ -212,7 +188,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
   title: {
     fontSize: 32,
-    fontWeight: '700',
+    fontFamily: Fonts.bold,
     color: Colors.primary,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
@@ -233,12 +209,17 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
   },
   activeTab: { backgroundColor: Colors.surface, ...Shadow.card },
-  tabText: { color: Colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  activeTabText: { color: Colors.textPrimary, fontWeight: '700' },
+  tabText: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.semiBold },
+  activeTabText: { color: Colors.textPrimary, fontFamily: Fonts.bold },
+  pillRow: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   genreRow: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
     gap: 8,
+    alignItems: 'center',
   },
   genrePill: {
     paddingHorizontal: 14,
@@ -252,13 +233,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  genreText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  activeGenreText: { color: Colors.surface },
+  genreText: { fontSize: 13, fontFamily: Fonts.semiBold, color: Colors.textSecondary },
+  activeGenreText: { color: Colors.surface, fontFamily: Fonts.semiBold },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: {
     color: Colors.textSecondary,
     fontSize: 15,
+    fontFamily: Fonts.regular,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -278,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   cardInfo: { flex: 1, gap: 4, justifyContent: 'center' },
-  cardTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  cardAuthor: { color: Colors.textSecondary, fontSize: 13 },
-  cardMeta: { color: Colors.textTertiary, fontSize: 12 },
+  cardTitle: { color: Colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
+  cardAuthor: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+  cardMeta: { color: Colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
 });

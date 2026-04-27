@@ -42,8 +42,8 @@ describe('StatsScreen', () => {
   it('renders section titles after loading', async () => {
     render(<StatsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Last 30 Days')).toBeTruthy();
-      expect(screen.getByText('Books Finished')).toBeTruthy();
+      expect(screen.getByText('Pages This Week')).toBeTruthy();
+      expect(screen.getByText('Books Finished This Year')).toBeTruthy();
       expect(screen.getByText('Genres')).toBeTruthy();
     });
   });
@@ -88,8 +88,7 @@ describe('StatsScreen', () => {
     (getReadingHistory as jest.Mock).mockResolvedValue([{ date: today, pages: 10 }]);
     render(<StatsScreen />);
     await waitFor(() => {
-      expect(screen.getByTestId('line-chart')).toBeTruthy();
-      expect(screen.getByTestId('bar-chart')).toBeTruthy();
+      expect(screen.getAllByTestId('bar-chart').length).toBeGreaterThan(0);
       expect(screen.getByTestId('pie-chart')).toBeTruthy();
     });
   });

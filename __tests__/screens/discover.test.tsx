@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import DiscoverScreen from '@/app/(tabs)/discover';
-import { ActionSheetIOS } from 'react-native';
 
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (cb: () => void) => {
@@ -14,13 +13,13 @@ jest.mock('@/lib/auth', () => ({
   useAuth: jest.fn(() => ({ session: { user: { id: 'user-1' } } })),
 }));
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
 jest.mock('@/lib/discover', () => ({
   getTrending: jest.fn().mockResolvedValue([]),
-  getBooksByGenre: jest.fn().mockResolvedValue([]),
   getRecommended: jest.fn().mockResolvedValue({ books: [], personalized: false }),
 }));
 
@@ -28,17 +27,8 @@ jest.mock('@/lib/books', () => ({
   upsertBook: jest.fn().mockResolvedValue('book-uuid'),
 }));
 
-jest.mock('@/lib/userBooks', () => ({
-  addToShelf: jest.fn().mockResolvedValue('ub-uuid'),
-}));
-
-jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
-  (_opts, cb) => cb(1)
-);
-
-import { getTrending, getBooksByGenre, getRecommended } from '@/lib/discover';
+import { getTrending, getRecommended } from '@/lib/discover';
 import { upsertBook } from '@/lib/books';
-import { addToShelf } from '@/lib/userBooks';
 
 const fakeBook = {
   hardcover_id: '1',
@@ -54,14 +44,10 @@ const fakeBook = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPush.mockClear();
   (getTrending as jest.Mock).mockResolvedValue([]);
-  (getBooksByGenre as jest.Mock).mockResolvedValue([]);
   (getRecommended as jest.Mock).mockResolvedValue({ books: [], personalized: false });
   (upsertBook as jest.Mock).mockResolvedValue('book-uuid');
-  (addToShelf as jest.Mock).mockResolvedValue('ub-uuid');
-  jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(
-    (_opts, cb) => cb(1)
-  );
 });
 
 describe('DiscoverScreen — Trending tab', () => {
@@ -73,18 +59,20 @@ describe('DiscoverScreen — Trending tab', () => {
     });
   });
 
-  it('renders genre pills', async () => {
+  it('renders period pills', async () => {
     render(<DiscoverScreen />);
     await waitFor(() => {
-      expect(screen.getByTestId('genre-pill-Fantasy')).toBeTruthy();
-      expect(screen.getByTestId('genre-pill-Thriller')).toBeTruthy();
+      expect(screen.getByTestId('period-pill-all_time')).toBeTruthy();
+      expect(screen.getByTestId('period-pill-last_month')).toBeTruthy();
+      expect(screen.getByTestId('period-pill-3_months')).toBeTruthy();
+      expect(screen.getByTestId('period-pill-1_year')).toBeTruthy();
     });
   });
 
-  it('calls getTrending on mount', async () => {
+  it('calls getTrending with all_time on mount', async () => {
     render(<DiscoverScreen />);
     await waitFor(() => {
-      expect(getTrending).toHaveBeenCalled();
+      expect(getTrending).toHaveBeenCalledWith('all_time');
     });
   });
 
@@ -97,34 +85,23 @@ describe('DiscoverScreen — Trending tab', () => {
     });
   });
 
-  it('tapping a genre pill calls getBooksByGenre with that genre', async () => {
+  it('tapping a period pill calls getTrending with that period', async () => {
     render(<DiscoverScreen />);
-    await waitFor(() => screen.getByTestId('genre-pill-Fantasy'));
-    fireEvent.press(screen.getByTestId('genre-pill-Fantasy'));
+    await waitFor(() => screen.getByTestId('period-pill-last_month'));
+    fireEvent.press(screen.getByTestId('period-pill-last_month'));
     await waitFor(() => {
-      expect(getBooksByGenre).toHaveBeenCalledWith('Fantasy');
+      expect(getTrending).toHaveBeenCalledWith('last_month');
     });
   });
 
-  it('tapping active genre pill a second time resets to trending', async () => {
-    render(<DiscoverScreen />);
-    await waitFor(() => screen.getByTestId('genre-pill-Fantasy'));
-    fireEvent.press(screen.getByTestId('genre-pill-Fantasy'));
-    await waitFor(() => expect(getBooksByGenre).toHaveBeenCalledTimes(1));
-    fireEvent.press(screen.getByTestId('genre-pill-Fantasy'));
-    await waitFor(() => {
-      expect(getTrending).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('tapping a book card shows shelf action sheet and calls upsertBook + addToShelf', async () => {
+  it('tapping a book card upserts the book and navigates to its detail page', async () => {
     (getTrending as jest.Mock).mockResolvedValue([fakeBook]);
     render(<DiscoverScreen />);
     await waitFor(() => screen.getByTestId('book-card-1'));
     fireEvent.press(screen.getByTestId('book-card-1'));
     await waitFor(() => {
       expect(upsertBook).toHaveBeenCalledWith(fakeBook);
-      expect(addToShelf).toHaveBeenCalledWith('user-1', 'book-uuid', 'reading');
+      expect(mockPush).toHaveBeenCalledWith('/book/book-uuid');
     });
   });
 });
@@ -152,12 +129,12 @@ describe('DiscoverScreen — For You tab', () => {
     });
   });
 
-  it('does not show genre pills in For You mode', async () => {
+  it('does not show period pills in For You mode', async () => {
     render(<DiscoverScreen />);
     await waitFor(() => screen.getByTestId('tab-for-you'));
     fireEvent.press(screen.getByTestId('tab-for-you'));
     await waitFor(() => {
-      expect(screen.queryByTestId('genre-pill-Fantasy')).toBeNull();
+      expect(screen.queryByTestId('period-pill-all_time')).toBeNull();
     });
   });
 });
