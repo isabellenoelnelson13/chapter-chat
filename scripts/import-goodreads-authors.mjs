@@ -64,7 +64,8 @@ async function flushBatch(batch) {
   const { error } = await supabase
     .from('authors')
     .upsert(batch, { onConflict: 'goodreads_author_id', ignoreDuplicates: false });
-  if (error) console.error('Upsert error:', error.message);
+  if (error) { console.error('Upsert error:', error.message); return false; }
+  return true;
 }
 
 async function run() {
@@ -74,7 +75,7 @@ async function run() {
     crlfDelay: Infinity,
   });
 
-  let lineNum = 0, imported = 0, skipped = 0, batch = [];
+  let lineNum = 0, imported = 0, skipped = 0, batch = [], hadError = false;
 
   for await (const line of rl) {
     lineNum++;
@@ -91,8 +92,8 @@ async function run() {
 
     batch.push(row);
     if (batch.length >= BATCH_SIZE) {
-      await flushBatch(batch);
-      imported += batch.length;
+      const ok = await flushBatch(batch);
+      if (ok) { imported += batch.length; } else { skipped += batch.length; hadError = true; }
       batch = [];
       await new Promise((r) => setTimeout(r, DELAY_MS));
       if (imported % 5000 === 0) {
@@ -102,11 +103,12 @@ async function run() {
   }
 
   if (batch.length > 0) {
-    await flushBatch(batch);
-    imported += batch.length;
+    const ok = await flushBatch(batch);
+    if (ok) { imported += batch.length; } else { skipped += batch.length; hadError = true; }
   }
 
   console.log(`\nDone. Imported: ${imported.toLocaleString()}, Skipped: ${skipped.toLocaleString()}`);
+  if (hadError) process.exitCode = 1;
 }
 
 run().catch((err) => { console.error(err); process.exit(1); });
