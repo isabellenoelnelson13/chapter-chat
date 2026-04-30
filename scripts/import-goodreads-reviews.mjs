@@ -72,14 +72,14 @@ function addToAccumulator(acc, goodreadsBookId, raw) {
   }
 
   const body = raw.review_text?.trim();
-  if (body) {
+  if (body && raw.review_id) {
     const helpful = parseInt(raw.n_votes ?? raw.helpful_votes ?? '0', 10) || 0;
     entry.top10.push({
-      goodreads_review_id: raw.review_id ? String(raw.review_id) : null,
+      goodreads_review_id: String(raw.review_id),
       reviewer_name: raw.user_id ? `user_${raw.user_id}` : null,
       rating: isNaN(rating) ? null : Math.round(rating * 10) / 10,
       body: body.slice(0, 2000),
-      date_added: raw.date_updated ? raw.date_updated.split(' ')[0] : null,
+      date_added: raw.date_updated ? (() => { const d = new Date(raw.date_updated); return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]; })() : null,
       helpful_votes: helpful,
     });
     // Keep only top MAX_REVIEWS_PER_BOOK by helpful_votes
@@ -135,7 +135,8 @@ async function run() {
   console.log('Writing reviews and updating book stats...');
 
   let reviewBatch = [];
-  let reviewsWritten = 0, booksUpdated = 0, hadError = false;
+  let bookUpdateBatch = [];
+  let reviewsWritten = 0, reviewsFailed = 0, booksUpdated = 0, hadError = false;
 
   for (const [goodreadsBookId, entry] of acc) {
     const bookUuid = bookMap.get(goodreadsBookId);
@@ -150,20 +151,15 @@ async function run() {
       reviewBatch.push({ ...review, book_id: bookUuid });
     }
 
-    // Update book stats
+    // Collect book stat update
     const newRating = entry.count > 0
       ? Math.round((entry.totalRating / entry.count) * 100) / 100
       : null;
-    const { error } = await supabase
-      .from('books')
-      .update({ rating: newRating, users_read_count: entry.count })
-      .eq('id', bookUuid);
-    if (error) { console.error('Book update error:', error.message); hadError = true; }
-    else booksUpdated++;
+    bookUpdateBatch.push({ id: bookUuid, rating: newRating, users_read_count: entry.count });
 
     if (reviewBatch.length >= BATCH_SIZE) {
       const ok = await flushReviews(reviewBatch);
-      if (ok) { reviewsWritten += reviewBatch.length; } else { hadError = true; }
+      if (ok) { reviewsWritten += reviewBatch.length; } else { reviewsFailed += reviewBatch.length; hadError = true; }
       reviewBatch = [];
       await new Promise((r) => setTimeout(r, DELAY_MS));
     }
@@ -171,10 +167,21 @@ async function run() {
 
   if (reviewBatch.length > 0) {
     const ok = await flushReviews(reviewBatch);
-    if (ok) { reviewsWritten += reviewBatch.length; } else { hadError = true; }
+    if (ok) { reviewsWritten += reviewBatch.length; } else { reviewsFailed += reviewBatch.length; hadError = true; }
   }
 
-  console.log(`\nDone. Reviews written: ${reviewsWritten.toLocaleString()}, Books updated: ${booksUpdated.toLocaleString()}, Skipped lines: ${skipped.toLocaleString()}`);
+  // Flush book stat updates
+  for (let i = 0; i < bookUpdateBatch.length; i++) {
+    const { id, rating, users_read_count } = bookUpdateBatch[i];
+    const { error } = await supabase.from('books').update({ rating, users_read_count }).eq('id', id);
+    if (error) { console.error('Book update error:', error.message); hadError = true; }
+    else booksUpdated++;
+    if ((i + 1) % BATCH_SIZE === 0) {
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+    }
+  }
+
+  console.log(`\nDone. Reviews written: ${reviewsWritten.toLocaleString()}, Reviews failed: ${reviewsFailed.toLocaleString()}, Books updated: ${booksUpdated.toLocaleString()}, Skipped lines: ${skipped.toLocaleString()}`);
   if (hadError) process.exitCode = 1;
 }
 
