@@ -125,10 +125,11 @@ export async function getBookReviews(
   userId: string
 ): Promise<{ friendReviews: FriendReview[]; topReviews: SeededReview[] }> {
   // 1. Fetch IDs the current user follows
-  const { data: followData } = await supabase
+  const { data: followData, error: followError } = await supabase
     .from('follows')
     .select('following_id')
     .eq('follower_id', userId);
+  if (followError) throw followError;
 
   const followingIds = (followData ?? []).map((f) => f.following_id);
 
