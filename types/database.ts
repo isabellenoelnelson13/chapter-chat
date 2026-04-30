@@ -330,7 +330,7 @@ export interface Database {
           rating: number | null;
           body: string | null;
           date_added: string | null;
-          helpful_votes: number | null;
+          helpful_votes: number;
           created_at: string;
         };
         Insert: {
@@ -341,7 +341,7 @@ export interface Database {
           rating?: number | null;
           body?: string | null;
           date_added?: string | null;
-          helpful_votes?: number | null;
+          helpful_votes?: number;
           created_at?: string;
         };
         Update: {
@@ -351,7 +351,7 @@ export interface Database {
           rating?: number | null;
           body?: string | null;
           date_added?: string | null;
-          helpful_votes?: number | null;
+          helpful_votes?: number;
         };
       };
     };
