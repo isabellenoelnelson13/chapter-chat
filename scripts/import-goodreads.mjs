@@ -140,7 +140,7 @@ function transform(raw, authorMap) {
     goodreads_id: String(id),
     title: title.trim(),
     author: author.trim(),
-    goodreads_author_id,        // ← add this line
+    goodreads_author_id,
     cover_url: cleanCover,
     page_count: isNaN(pageCount) || pageCount <= 0 ? null : pageCount,
     description: raw.description?.trim() || null,
