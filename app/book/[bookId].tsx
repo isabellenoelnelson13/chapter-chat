@@ -17,7 +17,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getUserBook, addToShelf, moveShelf, removeFromShelf, rateBook, updateReadDates, type UserBookWithBook } from '@/lib/userBooks';
-import { getBookById, getBookReviews, updatePageCount, type BookDetails, type HardcoverReview } from '@/lib/books';
+import { getBookById, getBookReviews, updatePageCount, type BookDetails, type FriendReview, type SeededReview } from '@/lib/books';
 import { createEvent } from '@/lib/activity';
 import { Shelf } from '@/types/database';
 import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
@@ -32,7 +32,8 @@ export default function BookDetailScreen() {
 
   const [book, setBook] = useState<BookDetails | null>(null);
   const [userBook, setUserBook] = useState<UserBookWithBook | null>(null);
-  const [reviews, setReviews] = useState<HardcoverReview[]>([]);
+  const [friendReviews, setFriendReviews] = useState<FriendReview[]>([]);
+  const [topReviews, setTopReviews] = useState<SeededReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [descExpanded, setDescExpanded] = useState(false);
   const [shareConfirmed, setShareConfirmed] = useState(false);
@@ -55,11 +56,16 @@ export default function BookDetailScreen() {
     }, [userId, bookId])
   );
 
-  // Fetch reviews once we know the hardcover_id
+  // Fetch friend reviews and seeded reviews
   useEffect(() => {
-    if (!book?.hardcover_id) return;
-    getBookReviews(book.hardcover_id).then(setReviews).catch(() => {});
-  }, [book?.hardcover_id]);
+    if (!bookId || !userId) return;
+    getBookReviews(bookId, userId)
+      .then(({ friendReviews, topReviews }) => {
+        setFriendReviews(friendReviews);
+        setTopReviews(topReviews);
+      })
+      .catch(() => {});
+  }, [bookId, userId]);
 
   if (!session) return null;
 
@@ -208,7 +214,16 @@ export default function BookDetailScreen() {
           )}
           <View style={styles.bookMeta}>
             <Text style={styles.bookTitle}>{book.title}</Text>
-            <Text style={styles.bookAuthor}>{book.author}</Text>
+            {book.goodreads_author_id ? (
+              <TouchableOpacity
+                onPress={() => router.push(`/author/${book.goodreads_author_id}`)}
+                testID="author-link"
+              >
+                <Text style={[styles.bookAuthor, { color: Colors.primary }]}>{book.author}</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.bookAuthor}>{book.author}</Text>
+            )}
 
             {/* Hardcover community rating */}
             {book.rating !== null && (
@@ -360,23 +375,49 @@ export default function BookDetailScreen() {
         ) : null}
 
         {/* Reviews */}
-        {reviews.length > 0 && (
+        {(friendReviews.length > 0 || topReviews.length > 0) && (
           <View>
             <Text style={styles.sectionTitle}>Reviews</Text>
-            {reviews.map((r, i) => (
-              <View key={i} style={styles.reviewCard} testID={`review-${i}`}>
-                <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewUsername}>{r.username}</Text>
-                  {r.rating !== null && (
-                    <Text style={styles.reviewRating}>
-                      {'★'.repeat(Math.min(5, Math.max(0, r.rating)))}
-                      {'☆'.repeat(5 - Math.min(5, Math.max(0, r.rating)))}
-                    </Text>
-                  )}
-                </View>
-                <Text style={styles.reviewText}>{r.review}</Text>
+
+            {friendReviews.length > 0 && (
+              <View>
+                <Text style={styles.reviewSubheader}>From your friends</Text>
+                {friendReviews.map((r, i) => (
+                  <View key={i} style={styles.reviewCard} testID={`friend-review-${i}`}>
+                    <View style={styles.reviewHeader}>
+                      <Text style={styles.reviewUsername}>{r.username}</Text>
+                      {r.rating !== null && (
+                        <Text style={styles.reviewRating}>
+                          {'★'.repeat(Math.min(5, Math.max(0, Math.round(r.rating))))}
+                          {'☆'.repeat(5 - Math.min(5, Math.max(0, Math.round(r.rating))))}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.reviewText}>{r.review}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            )}
+
+            {topReviews.length > 0 && (
+              <View>
+                <Text style={styles.reviewSubheader}>GoodReads reviews</Text>
+                {topReviews.map((r) => (
+                  <View key={r.id} style={styles.reviewCard} testID={`seeded-review-${r.id}`}>
+                    <View style={styles.reviewHeader}>
+                      <Text style={styles.reviewUsername}>{r.reviewerName ?? 'Anonymous'}</Text>
+                      {r.rating !== null && (
+                        <Text style={styles.reviewRating}>
+                          {'★'.repeat(Math.min(5, Math.max(0, Math.round(r.rating))))}
+                          {'☆'.repeat(5 - Math.min(5, Math.max(0, Math.round(r.rating))))}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.reviewText}>{r.body}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -441,6 +482,13 @@ const styles = StyleSheet.create({
   reviewUsername: { fontSize: 13, fontFamily: Fonts.bold, color: Colors.textPrimary },
   reviewRating: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.primary },
   reviewText: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, lineHeight: 18 },
+  reviewSubheader: {
+    fontSize: 14,
+    fontFamily: Fonts.semiBold,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    marginTop: 4,
+  },
 
   actions: { gap: Spacing.sm },
   primaryBtn: {

@@ -73,7 +73,25 @@ export interface HardcoverReview {
   username: string;
 }
 
-export async function getBookReviews(
+export interface FriendReview {
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  rating: number | null;
+  review: string;
+  finishedAt: string | null;
+}
+
+export interface SeededReview {
+  id: string;
+  reviewerName: string | null;
+  rating: number | null;
+  body: string;
+  dateAdded: string | null;
+  helpfulVotes: number;
+}
+
+export async function getHardcoverReviews(
   hardcoverId: string,
   limit = 10
 ): Promise<HardcoverReview[]> {
@@ -100,4 +118,59 @@ export async function getBookById(bookId: string): Promise<BookDetails | null> {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+export async function getBookReviews(
+  bookId: string,
+  userId: string
+): Promise<{ friendReviews: FriendReview[]; topReviews: SeededReview[] }> {
+  // 1. Fetch IDs the current user follows
+  const { data: followData, error: followError } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', userId);
+  if (followError) throw followError;
+
+  const followingIds = (followData ?? []).map((f) => f.following_id);
+
+  // 2. Fetch friend reviews and seeded reviews in parallel
+  const [friendRes, seededRes] = await Promise.all([
+    followingIds.length > 0
+      ? supabase
+          .from('user_books')
+          .select('user_id, rating, review, finished_at, profiles(username, avatar_url)')
+          .eq('book_id', bookId)
+          .not('review', 'is', null)
+          .in('user_id', followingIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+    supabase
+      .from('book_reviews')
+      .select('*')
+      .eq('book_id', bookId)
+      .order('helpful_votes', { ascending: false })
+      .limit(10),
+  ]);
+
+  if (friendRes.error) throw friendRes.error;
+  if (seededRes.error) throw seededRes.error;
+
+  const friendReviews: FriendReview[] = (friendRes.data ?? []).map((row: any) => ({
+    userId: row.user_id,
+    username: (row.profiles as any)?.username ?? 'Unknown',
+    avatarUrl: (row.profiles as any)?.avatar_url ?? null,
+    rating: row.rating,
+    review: row.review as string,
+    finishedAt: row.finished_at,
+  }));
+
+  const topReviews: SeededReview[] = (seededRes.data ?? []).map((row) => ({
+    id: row.id,
+    reviewerName: row.reviewer_name,
+    rating: row.rating != null ? Number(row.rating) : null,
+    body: row.body ?? '',
+    dateAdded: row.date_added,
+    helpfulVotes: row.helpful_votes,
+  }));
+
+  return { friendReviews, topReviews };
 }

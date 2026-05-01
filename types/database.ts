@@ -45,6 +45,11 @@ export interface Database {
           description: string | null;
           rating: number | null;
           users_read_count: number | null;
+          series_id: string | null;
+          series_name: string | null;
+          series_position: number | null;
+          goodreads_id: string | null;
+          goodreads_author_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -58,6 +63,11 @@ export interface Database {
           description?: string | null;
           rating?: number | null;
           users_read_count?: number | null;
+          series_id?: string | null;
+          series_name?: string | null;
+          series_position?: number | null;
+          goodreads_id?: string | null;
+          goodreads_author_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -70,6 +80,11 @@ export interface Database {
           description?: string | null;
           rating?: number | null;
           users_read_count?: number | null;
+          series_id?: string | null;
+          series_name?: string | null;
+          series_position?: number | null;
+          goodreads_id?: string | null;
+          goodreads_author_id?: string | null;
         };
       };
       user_books: {
@@ -286,6 +301,69 @@ export interface Database {
         };
         Update: {
           read_at?: string | null;
+        };
+      };
+      authors: {
+        Row: {
+          id: string;
+          goodreads_author_id: string;
+          name: string;
+          bio: string | null;
+          photo_url: string | null;
+          born_date: string | null;
+          website: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          goodreads_author_id: string;
+          name: string;
+          bio?: string | null;
+          photo_url?: string | null;
+          born_date?: string | null;
+          website?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          goodreads_author_id?: string;
+          name?: string;
+          bio?: string | null;
+          photo_url?: string | null;
+          born_date?: string | null;
+          website?: string | null;
+        };
+      };
+      book_reviews: {
+        Row: {
+          id: string;
+          book_id: string;
+          goodreads_review_id: string | null;
+          reviewer_name: string | null;
+          rating: number | null;
+          body: string | null;
+          date_added: string | null;
+          helpful_votes: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          book_id: string;
+          goodreads_review_id?: string | null;
+          reviewer_name?: string | null;
+          rating?: number | null;
+          body?: string | null;
+          date_added?: string | null;
+          helpful_votes?: number;
+          created_at?: string;
+        };
+        Update: {
+          book_id?: string;
+          goodreads_review_id?: string | null;
+          reviewer_name?: string | null;
+          rating?: number | null;
+          body?: string | null;
+          date_added?: string | null;
+          helpful_votes?: number;
         };
       };
     };
