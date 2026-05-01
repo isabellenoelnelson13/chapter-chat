@@ -45,6 +45,10 @@ export interface Database {
           description: string | null;
           rating: number | null;
           users_read_count: number | null;
+          series_id: string | null;
+          series_name: string | null;
+          series_position: number | null;
+          goodreads_id: string | null;
           goodreads_author_id: string | null;
           created_at: string;
         };
@@ -59,6 +63,10 @@ export interface Database {
           description?: string | null;
           rating?: number | null;
           users_read_count?: number | null;
+          series_id?: string | null;
+          series_name?: string | null;
+          series_position?: number | null;
+          goodreads_id?: string | null;
           goodreads_author_id?: string | null;
           created_at?: string;
         };
@@ -72,6 +80,10 @@ export interface Database {
           description?: string | null;
           rating?: number | null;
           users_read_count?: number | null;
+          series_id?: string | null;
+          series_name?: string | null;
+          series_position?: number | null;
+          goodreads_id?: string | null;
           goodreads_author_id?: string | null;
         };
       };
