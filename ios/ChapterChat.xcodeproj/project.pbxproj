@@ -14,9 +14,9 @@
 		343BC475850BFAFBF0668B2D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F968F43E2BA7B449E1F7BE47 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		8341E2FBDDC69A297EBAF1E6 /* libPods-ChapterChat.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 28E0EAB4486E4F75B791FA05 /* libPods-ChapterChat.a */; };
-		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BB000101AABB000000000001 /* ReadingLiveActivityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000100AABB000000000001 /* ReadingLiveActivityModule.swift */; };
 		BB000103AABB000000000001 /* ReadingLiveActivityBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BB000102AABB000000000001 /* ReadingLiveActivityBridge.m */; };
+		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		E42FE1CBFF2B3419228485CD /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E9B2EA854117A7389F4E5B /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -56,11 +56,11 @@
 		2CFD49382FA2984A00A7DE2E /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		90CD01659B065917096F864B /* Pods-ChapterChat.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChapterChat.debug.xcconfig"; path = "Target Support Files/Pods-ChapterChat/Pods-ChapterChat.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = ChapterChat/SplashScreen.storyboard; sourceTree = "<group>"; };
+		BB000100AABB000000000001 /* ReadingLiveActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReadingLiveActivityModule.swift; path = ChapterChat/ReadingLiveActivityModule.swift; sourceTree = "<group>"; };
+		BB000102AABB000000000001 /* ReadingLiveActivityBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ReadingLiveActivityBridge.m; path = ChapterChat/ReadingLiveActivityBridge.m; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		CD5301A56F933035F9384503 /* Pods-ChapterChat.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChapterChat.release.xcconfig"; path = "Target Support Files/Pods-ChapterChat/Pods-ChapterChat.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		BB000100AABB000000000001 /* ReadingLiveActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReadingLiveActivityModule.swift; path = ChapterChat/ReadingLiveActivityModule.swift; sourceTree = "<group>"; };
-		BB000102AABB000000000001 /* ReadingLiveActivityBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ReadingLiveActivityBridge.m; path = ChapterChat/ReadingLiveActivityBridge.m; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = ChapterChat/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* ChapterChat-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ChapterChat-Bridging-Header.h"; path = "ChapterChat/ChapterChat-Bridging-Header.h"; sourceTree = "<group>"; };
 		F968F43E2BA7B449E1F7BE47 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ChapterChat/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -556,7 +556,7 @@
 				INFOPLIST_FILE = ReadingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ReadingWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -605,7 +605,7 @@
 				INFOPLIST_FILE = ReadingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ReadingWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
