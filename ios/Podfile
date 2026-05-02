@@ -68,7 +68,7 @@ target 'ChapterChat' do
     if File.exist?(configure_script)
       content = File.read(configure_script)
       unless content.include?('"reading-live-activity"')
-        content = content.gsub(/--packages (.+)$/, '--packages \1 "reading-live-activity"')
+        content = content.gsub(/--packages "expo"/, '--packages "reading-live-activity" "expo"')
         File.write(configure_script, content)
         puts "✅ Patched expo-configure-project.sh to include reading-live-activity"
       end
