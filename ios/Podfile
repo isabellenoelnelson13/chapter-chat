@@ -61,5 +61,17 @@ target 'ChapterChat' do
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
 
+    # Expo autolinking doesn't discover local file: packages automatically.
+    # Patch the generated configure script to include reading-live-activity
+    # so ExpoModulesProvider.swift will register ReadingLiveActivityModule.
+    configure_script = "#{installer.sandbox.root}/Target Support Files/Pods-ChapterChat/expo-configure-project.sh"
+    if File.exist?(configure_script)
+      content = File.read(configure_script)
+      unless content.include?('"reading-live-activity"')
+        content = content.gsub(/--packages (.+)$/, '--packages \1 "reading-live-activity"')
+        File.write(configure_script, content)
+        puts "✅ Patched expo-configure-project.sh to include reading-live-activity"
+      end
+    end
   end
 end
