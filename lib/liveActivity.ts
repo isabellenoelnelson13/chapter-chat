@@ -1,17 +1,18 @@
-import { Platform } from 'react-native';
-import { requireOptionalNativeModule } from 'expo-modules-core';
+import { Platform, NativeModules } from 'react-native';
 
-const NativeLiveActivity = requireOptionalNativeModule('ReadingLiveActivity');
+const { ReadingLiveActivity } = NativeModules;
 
 export async function startReadingActivity(
   bookTitle: string,
   author: string,
   startPage: number
 ): Promise<void> {
-  if (Platform.OS !== 'ios' || !NativeLiveActivity) return;
+  if (Platform.OS !== 'ios' || !ReadingLiveActivity) return;
   try {
-    await NativeLiveActivity.startActivity(bookTitle, author, startPage);
-  } catch {}
+    await ReadingLiveActivity.startActivity(bookTitle, author, startPage);
+  } catch (e) {
+    console.error('[LiveActivity] startActivity error:', e);
+  }
 }
 
 export async function updateReadingActivity(
@@ -19,15 +20,19 @@ export async function updateReadingActivity(
   currentPage: number,
   isPaused: boolean
 ): Promise<void> {
-  if (Platform.OS !== 'ios' || !NativeLiveActivity) return;
+  if (Platform.OS !== 'ios' || !ReadingLiveActivity) return;
   try {
-    await NativeLiveActivity.updateActivity(elapsedSeconds, currentPage, isPaused);
-  } catch {}
+    await ReadingLiveActivity.updateActivity(elapsedSeconds, currentPage, isPaused);
+  } catch (e) {
+    console.error('[LiveActivity] updateActivity error:', e);
+  }
 }
 
 export async function endReadingActivity(): Promise<void> {
-  if (Platform.OS !== 'ios' || !NativeLiveActivity) return;
+  if (Platform.OS !== 'ios' || !ReadingLiveActivity) return;
   try {
-    await NativeLiveActivity.endActivity();
-  } catch {}
+    await ReadingLiveActivity.endActivity();
+  } catch (e) {
+    console.error('[LiveActivity] endActivity error:', e);
+  }
 }
