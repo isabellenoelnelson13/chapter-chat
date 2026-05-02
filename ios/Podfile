@@ -21,7 +21,7 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 prepare_react_native_project!
 
 target 'ChapterChat' do
-  use_expo_modules!
+  use_expo_modules!({ searchPaths: ['../modules/reading-live-activity'] })
   pod 'reading-live-activity', path: '../modules/reading-live-activity'
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -61,17 +61,5 @@ target 'ChapterChat' do
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
 
-    # Expo autolinking doesn't discover local file: packages automatically.
-    # Patch the generated configure script to include reading-live-activity
-    # so ExpoModulesProvider.swift will register ReadingLiveActivityModule.
-    configure_script = "#{installer.sandbox.root}/Target Support Files/Pods-ChapterChat/expo-configure-project.sh"
-    if File.exist?(configure_script)
-      content = File.read(configure_script)
-      unless content.include?('"reading-live-activity"')
-        content = content.gsub(/--packages "expo"/, '--packages "reading-live-activity" "expo"')
-        File.write(configure_script, content)
-        puts "✅ Patched expo-configure-project.sh to include reading-live-activity"
-      end
-    end
   end
 end
