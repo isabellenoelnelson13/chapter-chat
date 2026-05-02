@@ -59,6 +59,39 @@ struct ReadingWidgetLiveActivity: Widget {
             }
             .padding()
             .activityBackgroundTint(Color(.systemBackground))
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Image(systemName: "book.fill").foregroundStyle(.purple)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    if context.state.isPaused {
+                        Text(formatElapsed(context.state.startDate))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    } else {
+                        Text(context.state.startDate, style: .timer)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.purple)
+                            .monospacedDigit()
+                    }
+                }
+            } compactLeading: {
+                Image(systemName: "book.fill").foregroundStyle(.purple).font(.caption)
+            } compactTrailing: {
+                if context.state.isPaused {
+                    Image(systemName: "pause.fill").foregroundStyle(.secondary).font(.caption)
+                } else {
+                    Text(context.state.startDate, style: .timer)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.purple)
+                        .monospacedDigit()
+                        .frame(width: 44)
+                }
+            } minimal: {
+                Image(systemName: "book.fill").foregroundStyle(.purple)
+            }
         }
     }
 }
