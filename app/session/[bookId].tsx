@@ -30,6 +30,7 @@ import { createSession } from '@/lib/sessions';
 import { createEvent } from '@/lib/activity';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { startReadingActivity, updateReadingActivity, endReadingActivity } from '@/lib/liveActivity';
 
 type Phase = 'setup' | 'running' | 'paused' | 'finish';
 
@@ -98,6 +99,11 @@ export default function SessionScreen() {
     return () => sub.remove();
   }, []);
 
+  // End Live Activity when navigating away without saving
+  useEffect(() => {
+    return () => { endReadingActivity(); };
+  }, []);
+
   const startTimer = () => {
     accumulatedRef.current = 0;
     runStartRef.current = Date.now();
@@ -105,6 +111,13 @@ export default function SessionScreen() {
     setPhase('running');
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
+    if (userBook) {
+      startReadingActivity(
+        userBook.book.title,
+        userBook.book.author ?? '',
+        parseInt(startPage, 10) || userBook.current_page
+      );
+    }
   };
 
   const pauseTimer = () => {
@@ -115,6 +128,11 @@ export default function SessionScreen() {
     }
     setSeconds(accumulatedRef.current);
     setPhase('paused');
+    updateReadingActivity(
+      accumulatedRef.current,
+      parseInt(endPage, 10) || (userBook?.current_page ?? 0),
+      true
+    );
   };
 
   const resumeTimer = () => {
@@ -122,6 +140,11 @@ export default function SessionScreen() {
     setPhase('running');
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 1000);
+    updateReadingActivity(
+      accumulatedRef.current,
+      parseInt(endPage, 10) || (userBook?.current_page ?? 0),
+      false
+    );
   };
 
   const finishTimer = () => {
@@ -184,6 +207,7 @@ export default function SessionScreen() {
           duration_seconds: seconds,
         });
       }
+      endReadingActivity();
       successOpacity.value = withSequence(
         withTiming(1, { duration: 250 }),
         withTiming(1, { duration: 800 }),
