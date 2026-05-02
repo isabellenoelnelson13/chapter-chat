@@ -156,13 +156,92 @@ export async function getGenreBreakdown(userId: string): Promise<GenreCount[]> {
 
   const counts: Record<string, number> = {};
   for (const row of data ?? []) {
-    for (const genre of (row.book as any)?.genres ?? []) {
-      if (genre) counts[genre] = (counts[genre] ?? 0) + 1;
-    }
+    const genre = (row.book as any)?.genres?.[0];
+    if (genre) counts[genre] = (counts[genre] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([genre, count]) => ({ genre, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+export interface YearlyReadingStats {
+  totalPages: number;
+  totalHours: number;
+  totalSessions: number;
+  avgPagesPerSession: number;
+}
+
+export async function getYearlyReadingStats(userId: string): Promise<YearlyReadingStats> {
+  const year = new Date().getFullYear();
+  const yearStart = `${year}-01-01T00:00:00.000Z`;
+  const yearEnd = `${year + 1}-01-01T00:00:00.000Z`;
+
+  const { data, error } = await supabase
+    .from('reading_sessions')
+    .select('start_page, end_page, duration_seconds')
+    .eq('user_id', userId)
+    .gte('started_at', yearStart)
+    .lt('started_at', yearEnd);
+  if (error) throw error;
+
+  const sessions = data ?? [];
+  const totalPages = sessions.reduce((sum, s) => sum + (s.end_page - s.start_page), 0);
+  const totalSeconds = sessions.reduce((sum, s) => sum + s.duration_seconds, 0);
+  const totalSessions = sessions.length;
+  return {
+    totalPages,
+    totalHours: Math.round(totalSeconds / 3600 * 10) / 10,
+    totalSessions,
+    avgPagesPerSession: totalSessions > 0 ? Math.round(totalPages / totalSessions) : 0,
+  };
+}
+
+export async function getReadingByDayOfWeek(userId: string): Promise<{ day: string; pages: number }[]> {
+  const { data, error } = await supabase
+    .from('reading_sessions')
+    .select('start_page, end_page, started_at')
+    .eq('user_id', userId);
+  if (error) throw error;
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const totals = new Array(7).fill(0);
+  const counts = new Array(7).fill(0);
+
+  for (const s of data ?? []) {
+    const dow = new Date(s.started_at).getDay();
+    totals[dow] += s.end_page - s.start_page;
+    counts[dow]++;
+  }
+
+  return DAY_NAMES.map((day, i) => ({
+    day,
+    pages: counts[i] > 0 ? Math.round(totals[i] / counts[i]) : 0,
+  }));
+}
+
+export interface RatingStats {
+  average: number;
+  distribution: { stars: number; count: number }[];
+  totalRated: number;
+}
+
+export async function getRatingStats(userId: string): Promise<RatingStats> {
+  const { data, error } = await supabase
+    .from('user_books')
+    .select('rating')
+    .eq('user_id', userId)
+    .not('rating', 'is', null);
+  if (error) throw error;
+
+  const ratings = (data ?? []).map(r => r.rating as number);
+  const distribution = [1, 2, 3, 4, 5].map(stars => ({
+    stars,
+    count: ratings.filter(r => Math.max(1, Math.min(5, Math.round(r))) === stars).length,
+  }));
+  const average = ratings.length > 0
+    ? Math.round((ratings.reduce((s, r) => s + r, 0) / ratings.length) * 10) / 10
+    : 0;
+  return { average, distribution, totalRated: ratings.length };
 }
 
 export async function getWeeklyPace(userId: string): Promise<number> {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/lib/auth';
 import { getTrending, getRecommended, type TrendingPeriod } from '@/lib/discover';
 import { upsertBook, type BookSearchResult } from '@/lib/books';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const PERIODS: { label: string; value: TrendingPeriod }[] = [
   { label: 'Last Month', value: 'last_month' },
@@ -28,6 +29,7 @@ const PERIODS: { label: string; value: TrendingPeriod }[] = [
 type Tab = 'trending' | 'for_you';
 
 export default function DiscoverScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
   const userId = session?.user.id ?? '';
@@ -86,6 +88,88 @@ export default function DiscoverScreen() {
     }
   };
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
+    title: {
+      fontSize: 32,
+      fontFamily: Fonts.bold,
+      color: colors.primary,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.sm,
+    },
+    tabTrack: {
+      flexDirection: 'row',
+      backgroundColor: colors.border,
+      borderRadius: Radius.xl,
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.sm,
+      padding: 3,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: 'center',
+      borderRadius: Radius.xl,
+    },
+    activeTab: { backgroundColor: colors.surface, ...Shadow.card },
+    tabText: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.semiBold },
+    activeTabText: { color: colors.textPrimary, fontFamily: Fonts.bold },
+    pillRow: {
+      flexGrow: 0,
+      flexShrink: 0,
+    },
+    genreRow: {
+      paddingHorizontal: Spacing.lg,
+      paddingBottom: Spacing.sm,
+      gap: 8,
+      alignItems: 'center',
+    },
+    genrePill: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: Radius.xl,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    activeGenrePill: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    genreText: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    activeGenreText: { color: colors.surface, fontFamily: Fonts.semiBold },
+    list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyText: {
+      color: colors.textSecondary,
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    card: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      ...Shadow.card,
+    },
+    cover: { width: 50, height: 75, borderRadius: Radius.sm },
+    coverPlaceholder: {
+      width: 50,
+      height: 75,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.border,
+    },
+    cardInfo: { flex: 1, gap: 4, justifyContent: 'center' },
+    cardTitle: { color: colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
+    cardAuthor: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+    cardMeta: { color: colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
+  }), [colors]);
+
   if (!session) return null;
 
   return (
@@ -139,7 +223,7 @@ export default function DiscoverScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={Colors.primary} />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : activeTab === 'for_you' && !isPersonalized ? (
         <View style={styles.center}>
@@ -182,85 +266,3 @@ export default function DiscoverScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
-  title: {
-    fontSize: 32,
-    fontFamily: Fonts.bold,
-    color: Colors.primary,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  tabTrack: {
-    flexDirection: 'row',
-    backgroundColor: Colors.border,
-    borderRadius: Radius.xl,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    padding: 3,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: Radius.xl,
-  },
-  activeTab: { backgroundColor: Colors.surface, ...Shadow.card },
-  tabText: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.semiBold },
-  activeTabText: { color: Colors.textPrimary, fontFamily: Fonts.bold },
-  pillRow: {
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  genreRow: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    gap: 8,
-    alignItems: 'center',
-  },
-  genrePill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  activeGenrePill: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  genreText: { fontSize: 13, fontFamily: Fonts.semiBold, color: Colors.textSecondary },
-  activeGenreText: { color: Colors.surface, fontFamily: Fonts.semiBold },
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: {
-    color: Colors.textSecondary,
-    fontSize: 15,
-    fontFamily: Fonts.regular,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    ...Shadow.card,
-  },
-  cover: { width: 50, height: 75, borderRadius: Radius.sm },
-  coverPlaceholder: {
-    width: 50,
-    height: 75,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.border,
-  },
-  cardInfo: { flex: 1, gap: 4, justifyContent: 'center' },
-  cardTitle: { color: Colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
-  cardAuthor: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
-  cardMeta: { color: Colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
-});

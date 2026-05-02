@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { Shelf } from '@/types/database';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SHELVES: { key: Shelf; label: string }[] = [
   { key: 'reading', label: 'Reading' },
@@ -25,6 +26,7 @@ const SHELVES: { key: Shelf; label: string }[] = [
 ];
 
 export default function LibraryScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
 
@@ -45,6 +47,53 @@ export default function LibraryScreen() {
     }, [userId, activeShelf])
   );
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.sm,
+    },
+    title: { fontSize: 32, fontFamily: Fonts.bold, color: colors.primary },
+    fab: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...Shadow.card,
+    },
+
+    // Pill selector
+    tabTrack: {
+      flexDirection: 'row',
+      backgroundColor: colors.border,
+      borderRadius: Radius.xl,
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.md,
+      padding: 3,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: 'center',
+      borderRadius: Radius.xl,
+    },
+    activeTab: { backgroundColor: colors.surface, ...Shadow.card },
+    tabText: { color: colors.textSecondary, fontSize: 12, fontFamily: Fonts.semiBold },
+    activeTabText: { color: colors.textPrimary, fontFamily: Fonts.bold },
+
+    list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyText: { color: colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
+  }), [colors]);
+
   if (!session) return null;
 
   return (
@@ -53,7 +102,7 @@ export default function LibraryScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Library</Text>
         <TouchableOpacity style={styles.fab} onPress={() => router.push('/search')} testID="add-book-btn">
-          <Ionicons name="add" size={24} color={Colors.surface} />
+          <Ionicons name="add" size={24} color={colors.surface} />
         </TouchableOpacity>
       </View>
 
@@ -74,7 +123,7 @@ export default function LibraryScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={Colors.primary} />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -94,9 +143,44 @@ export default function LibraryScreen() {
 }
 
 function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
-  const progress = book.book.page_count
-    ? Math.min(1, book.current_page / book.book.page_count)
-    : 0;
+  const { colors } = useTheme();
+  const isPercent = book.format === 'ebook' || book.format === 'audiobook';
+  const progress = isPercent
+    ? (book.progress_percent ?? 0) / 100
+    : book.book.page_count
+      ? Math.min(1, book.current_page / book.book.page_count)
+      : 0;
+
+  const styles = useMemo(() => StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      ...Shadow.card,
+    },
+    cover: { width: 56, height: 84, borderRadius: Radius.sm },
+    coverPlaceholder: {
+      width: 56,
+      height: 84,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.border,
+    },
+    cardInfo: { flex: 1, gap: 4, justifyContent: 'center' },
+    cardTitle: { color: colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
+    cardAuthor: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+    cardMeta: { color: colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
+    progressTrack: {
+      height: 3,
+      backgroundColor: colors.progressTrack,
+      borderRadius: 2,
+      overflow: 'hidden',
+    },
+    progressFill: { height: 3, backgroundColor: colors.progressFill, borderRadius: 2 },
+    progressPct: { color: colors.textSecondary, fontSize: 12, fontFamily: Fonts.regular },
+    rating: { color: colors.primary, fontSize: 14, fontFamily: Fonts.regular },
+  }), [colors]);
 
   return (
     <View style={styles.card}>
@@ -118,7 +202,7 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
               : ''}
           </Text>
         )}
-        {shelf === 'reading' && !!book.book.page_count && (
+        {shelf === 'reading' && (isPercent || !!book.book.page_count) && (
           <>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
@@ -136,79 +220,3 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  title: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.primary },
-  fab: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadow.card,
-  },
-
-  // Pill selector
-  tabTrack: {
-    flexDirection: 'row',
-    backgroundColor: Colors.border,
-    borderRadius: Radius.xl,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-    padding: 3,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: Radius.xl,
-  },
-  activeTab: { backgroundColor: Colors.surface, ...Shadow.card },
-  tabText: { color: Colors.textSecondary, fontSize: 12, fontFamily: Fonts.semiBold },
-  activeTabText: { color: Colors.textPrimary, fontFamily: Fonts.bold },
-
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: Colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
-
-  card: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    ...Shadow.card,
-  },
-  cover: { width: 56, height: 84, borderRadius: Radius.sm },
-  coverPlaceholder: {
-    width: 56,
-    height: 84,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.border,
-  },
-  cardInfo: { flex: 1, gap: 4, justifyContent: 'center' },
-  cardTitle: { color: Colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
-  cardAuthor: { color: Colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
-  cardMeta: { color: Colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
-  progressTrack: {
-    height: 3,
-    backgroundColor: Colors.progressTrack,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: { height: 3, backgroundColor: Colors.progressFill, borderRadius: 2 },
-  progressPct: { color: Colors.textSecondary, fontSize: 12, fontFamily: Fonts.regular },
-  rating: { color: Colors.primary, fontSize: 14, fontFamily: Fonts.regular },
-});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
-import { Colors, Fonts, Radius, Shadow, Spacing } from '../../constants/theme';
+import { useTheme } from '../../lib/theme';
+import { Fonts, Radius, Shadow, Spacing } from '../../constants/theme';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
   const { signIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -33,6 +35,59 @@ export default function LoginScreen() {
     }
   };
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    inner: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.lg },
+    title: {
+      fontSize: 34,
+      fontFamily: Fonts.bold,
+      color: colors.primary,
+      textAlign: 'center',
+      marginBottom: Spacing.sm,
+    },
+    subtitle: {
+      fontSize: 14,
+      fontFamily: Fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: Spacing.xl,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: Fonts.regular,
+      marginBottom: Spacing.sm,
+      ...Shadow.card,
+    },
+    error: {
+      color: colors.error,
+      fontSize: 13,
+      fontFamily: Fonts.regular,
+      marginBottom: Spacing.sm,
+      textAlign: 'center',
+    },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.md,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: Spacing.sm,
+    },
+    buttonText: { color: colors.surface, fontFamily: Fonts.bold, fontSize: 16 },
+    link: {
+      color: colors.primary,
+      textAlign: 'center',
+      marginTop: Spacing.lg,
+      fontSize: 14,
+      fontFamily: Fonts.regular,
+    },
+  }), [colors]);
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -45,7 +100,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -54,7 +109,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -68,7 +123,7 @@ export default function LoginScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={Colors.surface} />
+            <ActivityIndicator color={colors.surface} />
           ) : (
             <Text style={styles.buttonText}>Sign In</Text>
           )}
@@ -81,56 +136,3 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.lg },
-  title: {
-    fontSize: 34,
-    fontFamily: Fonts.bold,
-    color: Colors.primary,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  input: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 14,
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontFamily: Fonts.regular,
-    marginBottom: Spacing.sm,
-    ...Shadow.card,
-  },
-  error: {
-    color: Colors.error,
-    fontSize: 13,
-    fontFamily: Fonts.regular,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  buttonText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 16 },
-  link: {
-    color: Colors.primary,
-    textAlign: 'center',
-    marginTop: Spacing.lg,
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-  },
-});

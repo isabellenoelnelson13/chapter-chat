@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -8,9 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
   RefreshControl,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -28,12 +26,10 @@ import {
   getFeed,
   likeEvent,
   unlikeEvent,
-  getComments,
-  addComment,
   type ActivityEvent,
-  type ActivityComment,
 } from '@/lib/activity';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -65,6 +61,7 @@ interface CommentsModalProps {
 }
 
 function CommentsModal({ event, userId, onClose }: CommentsModalProps) {
+  const { colors } = useTheme();
   const [comments, setComments] = useState<ActivityComment[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -88,18 +85,69 @@ function CommentsModal({ event, userId, onClose }: CommentsModalProps) {
     setComments((prev) => [...prev, newComment]);
   };
 
+  const modalStyles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    titleBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    title: { fontSize: 17, fontFamily: Fonts.bold, color: colors.textPrimary },
+    list: { flex: 1 },
+    listContent: { padding: Spacing.lg, gap: Spacing.md },
+    empty: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, textAlign: 'center', marginTop: 24 },
+    commentRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+    commentAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    commentInitial: { fontSize: 12, fontFamily: Fonts.bold, color: colors.surface },
+    commentUsername: { fontSize: 13, fontFamily: Fonts.bold, color: colors.textPrimary },
+    commentBody: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textPrimary, marginTop: 2 },
+    commentTime: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textTertiary, marginTop: 2 },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+      color: colors.textPrimary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+  }), [colors]);
+
   return (
     <Modal visible={!!event} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={modalStyles.container}>
         <View style={modalStyles.titleBar}>
           <Text style={modalStyles.title}>Comments</Text>
           <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color={Colors.textPrimary} />
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
         <ScrollView style={modalStyles.list} contentContainerStyle={modalStyles.listContent}>
           {loading ? (
-            <ActivityIndicator color={Colors.primary} />
+            <ActivityIndicator color={colors.primary} />
           ) : comments.length === 0 ? (
             <Text style={modalStyles.empty}>No comments yet. Be the first.</Text>
           ) : (
@@ -123,13 +171,13 @@ function CommentsModal({ event, userId, onClose }: CommentsModalProps) {
           <TextInput
             style={modalStyles.input}
             placeholder="Add a comment..."
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={input}
             onChangeText={setInput}
             testID="comment-input"
           />
           <TouchableOpacity onPress={handleSend} testID="send-comment-btn">
-            <Ionicons name="send" size={22} color={Colors.primary} />
+            <Ionicons name="send" size={22} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -140,19 +188,46 @@ function CommentsModal({ event, userId, onClose }: CommentsModalProps) {
 function FeedCard({
   event,
   onLike,
-  onComment,
 }: {
   event: ActivityEvent;
   onLike: () => void;
-  onComment: () => void;
 }) {
+  const { colors } = useTheme();
   const router = useRouter();
   const verb = eventVerb(event);
+
+  const feedStyles = useMemo(() => StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+      ...Shadow.card,
+    },
+    topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarInitial: { fontSize: 16, fontFamily: Fonts.bold, color: colors.surface },
+    headline: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textPrimary, lineHeight: 20 },
+    username: { fontFamily: Fonts.bold },
+    bookTitle: { fontFamily: Fonts.bookTitle, color: colors.primary },
+    timestamp: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textTertiary },
+    snippet: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary, lineHeight: 18 },
+    actions: { flexDirection: 'row', gap: Spacing.md, paddingTop: 4 },
+    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    actionCount: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
+  }), [colors]);
 
   return (
     <TouchableOpacity
       style={feedStyles.card}
-      onPress={() => router.push(`/book/${event.bookId}`)}
+      onPress={() => router.push(`/activity/${event.id}`)}
       activeOpacity={0.8}
     >
       <View style={feedStyles.topRow}>
@@ -180,31 +255,28 @@ function FeedCard({
       <View style={feedStyles.actions}>
         <TouchableOpacity
           style={feedStyles.actionBtn}
-          onPress={() => onLike()}
+          onPress={(e) => { e.stopPropagation(); onLike(); }}
           testID={`like-btn-${event.id}`}
           accessibilityLabel={event.likedByMe ? 'liked' : 'not liked'}
         >
           <Ionicons
             name={event.likedByMe ? 'heart-sharp' : 'heart-outline'}
             size={18}
-            color={event.likedByMe ? Colors.error : Colors.textSecondary}
+            color={event.likedByMe ? colors.error : colors.textSecondary}
           />
           <Text style={feedStyles.actionCount}>{event.likeCount}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={feedStyles.actionBtn}
-          onPress={() => onComment()}
-          testID={`comment-btn-${event.id}`}
-        >
-          <Ionicons name="chatbubble-outline" size={18} color={Colors.textSecondary} />
+        <View style={feedStyles.actionBtn}>
+          <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} />
           <Text style={feedStyles.actionCount}>{event.commentCount}</Text>
-        </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
 export default function SocialScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
   const userId = session?.user.id ?? '';
@@ -215,7 +287,6 @@ export default function SocialScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [activeCommentEvent, setActiveCommentEvent] = useState<ActivityEvent | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(() => {
@@ -300,6 +371,90 @@ export default function SocialScreen() {
   const followLabel = (status: UserSearchResult['followStatus']) =>
     status === 'following' ? 'Following' : status === 'requested' ? 'Requested' : 'Follow';
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: Spacing.lg, gap: Spacing.lg },
+    title: { fontSize: 32, fontFamily: Fonts.bold, color: colors.primary },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    clubsLink: {
+      color: colors.primary,
+      fontFamily: Fonts.semiBold,
+      fontSize: 15,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      ...Shadow.card,
+    },
+    searchInput: { flex: 1, fontSize: 15, fontFamily: Fonts.regular, color: colors.textPrimary },
+    sectionTitle: { fontSize: 18, fontFamily: Fonts.bold, color: colors.textPrimary },
+    emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary },
+
+    followingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    followingCount: {
+      fontSize: 13, fontFamily: Fonts.semiBold,
+      color: colors.surface,
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 7,
+      paddingVertical: 1,
+      overflow: 'hidden',
+    },
+    avatarStrip: { paddingVertical: 4, gap: Spacing.md },
+    avatarItem: { alignItems: 'center', width: 64 },
+    avatarCircle: {
+      width: 52, height: 52, borderRadius: 26,
+      backgroundColor: colors.primary,
+      justifyContent: 'center', alignItems: 'center',
+      ...Shadow.card,
+    },
+    avatarCircleInitial: { fontSize: 20, fontFamily: Fonts.bold, color: colors.surface },
+    avatarName: {
+      fontSize: 11, fontFamily: Fonts.medium,
+      color: colors.textSecondary,
+      marginTop: 5, textAlign: 'center',
+    },
+
+    userRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      ...Shadow.card,
+    },
+    userAvatar: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: colors.primary,
+      justifyContent: 'center', alignItems: 'center',
+    },
+    userInitial: { fontSize: 16, fontFamily: Fonts.bold, color: colors.surface },
+    userInfo: { flex: 1 },
+    userName: { fontSize: 15, fontFamily: Fonts.semiBold, color: colors.textPrimary },
+    userBio: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary, marginTop: 2 },
+    followBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.xl,
+      paddingHorizontal: 14, paddingVertical: 6,
+    },
+    followBtnOutlined: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5, borderColor: colors.primary,
+    },
+    followBtnText: { color: colors.surface, fontFamily: Fonts.bold, fontSize: 13 },
+    followBtnTextOutlined: { color: colors.primary, fontFamily: Fonts.bold },
+  }), [colors]);
+
   const renderUserRow = (user: UserSearchResult, list: 'search' | 'following') => (
     <TouchableOpacity
       key={user.id}
@@ -347,11 +502,11 @@ export default function SocialScreen() {
         </View>
 
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={Colors.textTertiary} />
+          <Ionicons name="search" size={16} color={colors.textTertiary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search people..."
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={handleSearchChange}
             autoCapitalize="none"
@@ -362,7 +517,7 @@ export default function SocialScreen() {
 
         {isSearchActive ? (
           searching ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
           ) : searchResults.length === 0 ? (
             <Text style={styles.emptyText}>No users found</Text>
           ) : (
@@ -370,11 +525,35 @@ export default function SocialScreen() {
           )
         ) : (
           <>
-            <Text style={styles.sectionTitle}>Following</Text>
+            <View style={styles.followingHeader}>
+              <Text style={styles.sectionTitle}>Following</Text>
+              {following.length > 0 && (
+                <Text style={styles.followingCount}>{following.length}</Text>
+              )}
+            </View>
             {following.length === 0 ? (
               <Text style={styles.emptyText}>Search for people to follow.</Text>
             ) : (
-              following.map(u => renderUserRow(u, 'following'))
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.avatarStrip}
+              >
+                {following.map(u => (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={styles.avatarItem}
+                    onPress={() => router.push(`/user/${u.id}`)}
+                  >
+                    <View style={styles.avatarCircle}>
+                      <Text style={styles.avatarCircleInitial}>
+                        {u.username.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.avatarName} numberOfLines={1}>{u.username}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             )}
 
             <Text style={styles.sectionTitle}>Activity</Text>
@@ -386,7 +565,6 @@ export default function SocialScreen() {
                   key={event.id}
                   event={event}
                   onLike={() => handleLike(event)}
-                  onComment={() => setActiveCommentEvent(event)}
                 />
               ))
             )}
@@ -394,153 +572,6 @@ export default function SocialScreen() {
         )}
       </ScrollView>
 
-      <CommentsModal
-        event={activeCommentEvent}
-        userId={userId}
-        onClose={() => setActiveCommentEvent(null)}
-      />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: Spacing.lg, gap: Spacing.lg },
-  title: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.primary },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  clubsLink: {
-    color: Colors.primary,
-    fontFamily: Fonts.semiBold,
-    fontSize: 15,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    ...Shadow.card,
-  },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: Fonts.regular, color: Colors.textPrimary },
-  sectionTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    ...Shadow.card,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userInitial: { fontSize: 16, fontFamily: Fonts.bold, color: Colors.surface },
-  userInfo: { flex: 1 },
-  userName: { fontSize: 15, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
-  userBio: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, marginTop: 2 },
-  followBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.xl,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  followBtnOutlined: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-  },
-  followBtnText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 13 },
-  followBtnTextOutlined: { color: Colors.primary, fontFamily: Fonts.bold },
-});
-
-const feedStyles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    ...Shadow.card,
-  },
-  topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitial: { fontSize: 16, fontFamily: Fonts.bold, color: Colors.surface },
-  headline: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textPrimary, lineHeight: 20 },
-  username: { fontFamily: Fonts.bold },
-  bookTitle: { fontFamily: Fonts.bookTitle, color: Colors.primary },
-  timestamp: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textTertiary },
-  snippet: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, lineHeight: 18 },
-  actions: { flexDirection: 'row', gap: Spacing.md, paddingTop: 4 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actionCount: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary },
-});
-
-const modalStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  titleBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  title: { fontSize: 17, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  list: { flex: 1 },
-  listContent: { padding: Spacing.lg, gap: Spacing.md },
-  empty: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, textAlign: 'center', marginTop: 24 },
-  commentRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
-  commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  commentInitial: { fontSize: 12, fontFamily: Fonts.bold, color: Colors.surface },
-  commentUsername: { fontSize: 13, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  commentBody: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textPrimary, marginTop: 2 },
-  commentTime: { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textTertiary, marginTop: 2 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    fontSize: 15,
-    fontFamily: Fonts.regular,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-});

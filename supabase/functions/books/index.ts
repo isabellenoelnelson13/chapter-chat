@@ -17,6 +17,7 @@ const BOOK_FIELDS = `
   cached_tags
   rating
   users_read_count
+  book_series { position series { id name } }
 `;
 
 const SEARCH_QUERY = `
@@ -35,6 +36,28 @@ const TRENDING_QUERY = `
       where: { users_read_count: { _gt: 100 } }
     ) {
       ${BOOK_FIELDS}
+    }
+  }
+`;
+
+const BOOK_BY_ID_QUERY = `
+  query BookById($id: Int!) {
+    books_by_pk(id: $id) {
+      ${BOOK_FIELDS}
+    }
+  }
+`;
+
+const SERIES_QUERY = `
+  query SeriesBooks($series_id: Int!) {
+    book_series(
+      where: { series_id: { _eq: $series_id } }
+      order_by: { position: asc_nulls_last }
+    ) {
+      position
+      book {
+        ${BOOK_FIELDS}
+      }
     }
   }
 `;
@@ -81,9 +104,13 @@ interface BookResult {
   description: string | null;
   rating: number | null;
   users_read_count: number;
+  series_id: string | null;
+  series_name: string | null;
+  series_position: number | null;
 }
 
 function normalizeBook(b: any): BookResult {
+  const seriesEntry = Array.isArray(b.book_series) ? b.book_series[0] : null;
   return {
     hardcover_id: String(b.id),
     title: b.title ?? 'Unknown Title',
@@ -98,6 +125,9 @@ function normalizeBook(b: any): BookResult {
     description: b.description ?? null,
     rating: typeof b.rating === 'number' ? b.rating : null,
     users_read_count: b.users_read_count ?? 0,
+    series_id: seriesEntry ? String(seriesEntry.series.id) : null,
+    series_name: seriesEntry?.series?.name ?? null,
+    series_position: seriesEntry?.position ?? null,
   };
 }
 
@@ -122,6 +152,9 @@ function normalizeSearchHit(hit: any): BookResult {
     description: doc.description ?? null,
     rating: typeof doc.rating === 'number' ? doc.rating : null,
     users_read_count: doc.users_read_count ?? 0,
+    series_id: null,
+    series_name: null,
+    series_position: null,
   };
 }
 
@@ -153,7 +186,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, query, period, hardcover_id, limit = 20 } = await req.json();
+    const { action, query, period, hardcover_id, series_id, limit = 20 } = await req.json();
     const apiKey = Deno.env.get('HARDCOVER_API_KEY') ?? '';
 
     if (!apiKey) {
@@ -211,6 +244,45 @@ serve(async (req) => {
       return new Response(JSON.stringify(reviews), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    } else if (action === 'book') {
+      const bookIdInt = parseInt(String(hardcover_id ?? ''), 10);
+      if (isNaN(bookIdInt)) {
+        return new Response(JSON.stringify(null), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const json = await queryHardcover(apiKey, BOOK_BY_ID_QUERY, { id: bookIdInt });
+      const b = json.data?.books_by_pk;
+      const result = b ? normalizeBook(b) : null;
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else if (action === 'series') {
+      const seriesIdInt = parseInt(String(series_id ?? ''), 10);
+      if (isNaN(seriesIdInt)) {
+        return new Response(JSON.stringify([]), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const json = await queryHardcover(apiKey, SERIES_QUERY, { series_id: seriesIdInt });
+      const entries: any[] = json.data?.book_series ?? [];
+
+      // Deduplicate by position: keep the edition with the most readers (main English edition wins)
+      const byPosition = new Map<number | null, { result: BookResult; readers: number }>();
+      for (const e of entries) {
+        if (!e.book) continue;
+        const b = { ...e.book, book_series: [{ position: e.position, series: { id: seriesIdInt, name: '' } }] };
+        const normalized = { ...normalizeBook(b), series_position: e.position ?? null };
+        const pos = e.position ?? null;
+        const readers = normalized.users_read_count;
+        const existing = byPosition.get(pos);
+        if (!existing || readers > existing.readers) {
+          byPosition.set(pos, { result: normalized, readers });
+        }
+      }
+      books = Array.from(byPosition.values())
+        .map((v) => v.result)
+        .sort((a, b) => (a.series_position ?? 999) - (b.series_position ?? 999));
     } else {
       return new Response(
         JSON.stringify({ error: `Unknown action: ${action}` }),

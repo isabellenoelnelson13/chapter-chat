@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -11,17 +12,27 @@ function tabIcon(focusedName: IoniconName, unfocusedName: IoniconName) {
 }
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.tabBarBg,
-          borderTopColor: Colors.border,
-          borderTopWidth: 1,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          borderTopColor: 'transparent',
+          elevation: 0,
+          shadowColor: 'transparent',
+          shadowOpacity: 0,
+          shadowOffset: { width: 0, height: 0 },
+          shadowRadius: 0,
         },
-        tabBarActiveTintColor: Colors.tabActive,
-        tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: colors.tabBarBg }} />
+        ),
+        tabBarActiveTintColor: colors.tabActive,
+        tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
       }}
     >
@@ -54,17 +65,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="discover"
+        name="clubs"
         options={{
-          title: 'Discover',
-          tabBarIcon: tabIcon('compass', 'compass-outline'),
+          title: 'Clubs',
+          tabBarIcon: tabIcon('people-circle', 'people-circle-outline'),
         }}
       />
       <Tabs.Screen
         name="profile"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="discover"
+        options={{ href: null }}
       />
     </Tabs>
   );

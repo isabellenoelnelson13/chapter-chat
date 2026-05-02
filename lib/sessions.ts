@@ -2,6 +2,25 @@ import { supabase } from './supabase';
 import { updateCurrentPage } from './userBooks';
 import { Database } from '../types/database';
 
+/** Marks a book as read on a given day without changing current page or progress. */
+export async function createQuickLog(params: {
+  userId: string;
+  bookId: string;
+  page: number;
+  date: Date;
+}): Promise<void> {
+  const { userId, bookId, page, date } = params;
+  const { error } = await (supabase.from('reading_sessions') as any).insert({
+    user_id: userId,
+    book_id: bookId,
+    start_page: page,
+    end_page: page,
+    duration_seconds: 0,
+    started_at: date.toISOString(),
+  });
+  if (error) throw error;
+}
+
 type SessionInsert = Database['public']['Tables']['reading_sessions']['Insert'];
 
 export async function createSession(params: {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -27,7 +27,9 @@ import {
 } from '@/lib/clubs';
 import { searchUsers, type UserSearchResult } from '@/lib/follows';
 import { searchBooks, upsertBook, type BookSearchResult } from '@/lib/books';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { sendPushNotification } from '@/lib/notifications';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 function pct(current: number, total: number | null): string {
   if (!total) return '—';
@@ -35,6 +37,7 @@ function pct(current: number, total: number | null): string {
 }
 
 export default function ClubDetailScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
   const { clubId } = useLocalSearchParams<{ clubId: string }>();
@@ -119,17 +122,169 @@ export default function ClubDetailScreen() {
       setPosts((prev) => [newPost, ...prev]);
       setPostBody('');
       setShowPostModal(false);
+      // Notify all other club members
+      if (club) {
+        const posterName = session?.user.user_metadata?.username ?? 'Someone';
+        club.members
+          .filter((m) => m.userId !== userId)
+          .forEach((m) => {
+            sendPushNotification(
+              m.userId,
+              club.name,
+              `${posterName} posted in ${club.name}`,
+              { clubId },
+            );
+          });
+      }
     } catch {
       Alert.alert('Error', 'Could not post.');
     }
   };
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    backBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      gap: 4,
+    },
+    backText: { color: colors.primary, fontSize: 16, fontFamily: Fonts.semiBold },
+    scroll: { padding: Spacing.lg, gap: Spacing.md },
+    title: { fontSize: 24, fontFamily: Fonts.bold, color: colors.textPrimary },
+    description: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary },
+    notFound: { fontSize: 16, fontFamily: Fonts.regular, color: colors.textSecondary },
+    sectionTitle: { fontSize: 17, fontFamily: Fonts.bold, color: colors.textPrimary, marginTop: Spacing.sm },
+    memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    memberAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    memberInitial: { color: colors.surface, fontFamily: Fonts.bold, fontSize: 14 },
+    memberName: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.textPrimary },
+    memberRole: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary },
+    memberPct: { fontSize: 14, fontFamily: Fonts.bold, color: colors.primary },
+    secondaryBtn: {
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    secondaryBtnText: { color: colors.primary, fontFamily: Fonts.semiBold, fontSize: 15 },
+    bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    noBookText: { fontSize: 15, fontFamily: Fonts.regular, color: colors.textTertiary, flex: 1 },
+    changeBookText: { color: colors.primary, fontSize: 13, fontFamily: Fonts.semiBold, marginTop: 6 },
+    currentBookCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      alignItems: 'flex-start',
+      ...Shadow.card,
+    },
+    currentBookCover: { width: 70, height: 105, borderRadius: Radius.sm },
+    currentBookCoverPlaceholder: {
+      width: 70,
+      height: 105,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.border,
+    },
+    currentBookInfo: { flex: 1, justifyContent: 'flex-start', paddingTop: 2 },
+    currentBookTitle: { fontSize: 15, fontFamily: Fonts.bookTitle, color: colors.textPrimary },
+    bookSearchResult: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      alignItems: 'center',
+      ...Shadow.card,
+    },
+    bookSearchCover: { width: 50, height: 75, borderRadius: Radius.sm },
+    bookSearchCoverPlaceholder: {
+      width: 50,
+      height: 75,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.border,
+    },
+    bookSearchInfo: { flex: 1, gap: 3 },
+    searchResultPages: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textTertiary },
+    historyItem: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary },
+    discussionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: Spacing.sm,
+    },
+    newPostText: { color: colors.primary, fontFamily: Fonts.semiBold, fontSize: 14 },
+    emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary },
+    postCard: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      gap: 4,
+      ...Shadow.card,
+    },
+    postUsername: { fontSize: 13, fontFamily: Fonts.bold, color: colors.textPrimary },
+    postBody: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, lineHeight: 20 },
+    replyCount: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textTertiary },
+    modal: { flex: 1, backgroundColor: colors.background },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: colors.textPrimary },
+    cancelText: { color: colors.primary, fontSize: 16, fontFamily: Fonts.regular },
+    modalBody: { padding: Spacing.lg, gap: Spacing.sm },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 14,
+      fontSize: 16,
+      fontFamily: Fonts.regular,
+      color: colors.textPrimary,
+    },
+    postInput: { minHeight: 120, textAlignVertical: 'top' },
+    primaryBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    primaryBtnText: { color: colors.surface, fontSize: 16, fontFamily: Fonts.bold },
+    searchResult: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchResultText: { fontSize: 15, fontFamily: Fonts.semiBold, color: colors.textPrimary },
+    searchResultSub: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
+  }), [colors]);
 
   if (!session) return null;
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={Colors.primary} />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -138,7 +293,7 @@ export default function ClubDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color={Colors.primary} />
+          <Ionicons name="chevron-back" size={24} color={colors.primary} />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
         <View style={styles.center}>
@@ -153,7 +308,7 @@ export default function ClubDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Ionicons name="chevron-back" size={24} color={Colors.primary} />
+        <Ionicons name="chevron-back" size={24} color={colors.primary} />
         <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
@@ -262,7 +417,7 @@ export default function ClubDetailScreen() {
             <TextInput
               style={[styles.input, styles.postInput]}
               placeholder="Write a post..."
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={postBody}
               onChangeText={setPostBody}
               multiline
@@ -292,7 +447,7 @@ export default function ClubDetailScreen() {
             <TextInput
               style={styles.input}
               placeholder="Search by username..."
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={memberSearch}
               onChangeText={handleSearchMembers}
               autoCapitalize="none"
@@ -325,7 +480,7 @@ export default function ClubDetailScreen() {
             <TextInput
               style={styles.input}
               placeholder="Search books..."
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={bookSearch}
               onChangeText={handleSearchBooks}
               autoCapitalize="none"
@@ -358,141 +513,3 @@ export default function ClubDetailScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    gap: 4,
-  },
-  backText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.semiBold },
-  scroll: { padding: Spacing.lg, gap: Spacing.md },
-  title: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  description: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  notFound: { fontSize: 16, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  sectionTitle: { fontSize: 17, fontFamily: Fonts.bold, color: Colors.textPrimary, marginTop: Spacing.sm },
-  memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  memberAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  memberInitial: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 14 },
-  memberName: { fontSize: 14, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
-  memberRole: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  memberPct: { fontSize: 14, fontFamily: Fonts.bold, color: Colors.primary },
-  secondaryBtn: {
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  secondaryBtnText: { color: Colors.primary, fontFamily: Fonts.semiBold, fontSize: 15 },
-  bookRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  noBookText: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textTertiary, flex: 1 },
-  changeBookText: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold, marginTop: 6 },
-  currentBookCard: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    alignItems: 'flex-start',
-    ...Shadow.card,
-  },
-  currentBookCover: { width: 70, height: 105, borderRadius: Radius.sm },
-  currentBookCoverPlaceholder: {
-    width: 70,
-    height: 105,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.border,
-  },
-  currentBookInfo: { flex: 1, justifyContent: 'flex-start', paddingTop: 2 },
-  currentBookTitle: { fontSize: 15, fontFamily: Fonts.bookTitle, color: Colors.textPrimary },
-  bookSearchResult: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    alignItems: 'center',
-    ...Shadow.card,
-  },
-  bookSearchCover: { width: 50, height: 75, borderRadius: Radius.sm },
-  bookSearchCoverPlaceholder: {
-    width: 50,
-    height: 75,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.border,
-  },
-  bookSearchInfo: { flex: 1, gap: 3 },
-  searchResultPages: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textTertiary },
-  historyItem: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  discussionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.sm,
-  },
-  newPostText: { color: Colors.primary, fontFamily: Fonts.semiBold, fontSize: 14 },
-  emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  postCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: 4,
-    ...Shadow.card,
-  },
-  postUsername: { fontSize: 13, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  postBody: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, lineHeight: 20 },
-  replyCount: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textTertiary },
-  modal: { flex: 1, backgroundColor: Colors.background },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  cancelText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.regular },
-  modalBody: { padding: Spacing.lg, gap: Spacing.sm },
-  input: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: Fonts.regular,
-    color: Colors.textPrimary,
-  },
-  postInput: { minHeight: 120, textAlignVertical: 'top' },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  primaryBtnText: { color: Colors.surface, fontSize: 16, fontFamily: Fonts.bold },
-  searchResult: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  searchResultText: { fontSize: 15, fontFamily: Fonts.semiBold, color: Colors.textPrimary },
-  searchResultSub: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary },
-});

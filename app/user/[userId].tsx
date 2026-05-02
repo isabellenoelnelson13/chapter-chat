@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import {
@@ -19,9 +19,11 @@ import {
   unfollowUser,
   cancelFollowRequest,
 } from '@/lib/follows';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 export default function UserProfileScreen() {
+  const { colors } = useTheme();
   const { userId: targetUserId } = useLocalSearchParams<{ userId: string }>();
   const { session } = useAuth();
   const currentUserId = session?.user.id ?? '';
@@ -58,12 +60,63 @@ export default function UserProfileScreen() {
     }, [targetUserId, currentUserId])
   );
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scroll: {
+      padding: Spacing.lg,
+      gap: Spacing.lg,
+      alignItems: 'center',
+    },
+    header: { alignItems: 'center', gap: 8, width: '100%' },
+    avatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    initial: { fontSize: 32, fontFamily: Fonts.bold, color: colors.surface },
+    username: { fontSize: 24, fontFamily: Fonts.bold, color: colors.textPrimary },
+    bio: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, textAlign: 'center' },
+    followBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.xl,
+      paddingHorizontal: 32,
+      paddingVertical: 10,
+    },
+    followBtnOutlined: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+    },
+    followBtnText: { color: colors.surface, fontFamily: Fonts.bold, fontSize: 15 },
+    followBtnTextOutlined: { color: colors.primary, fontFamily: Fonts.bold },
+    pillRow: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+    },
+    pill: {
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+      borderRadius: Radius.xl,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: colors.surface,
+    },
+    pillText: { color: colors.primary, fontSize: 13, fontFamily: Fonts.semiBold },
+    privateLabel: { fontSize: 15, fontFamily: Fonts.regular, color: colors.textSecondary },
+  }), [colors]);
+
   if (!session) return null;
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={Colors.primary} />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -138,54 +191,3 @@ export default function UserProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: {
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-    alignItems: 'center',
-  },
-  header: { alignItems: 'center', gap: 8, width: '100%' },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  initial: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.surface },
-  username: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  bio: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, textAlign: 'center' },
-  followBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.xl,
-    paddingHorizontal: 32,
-    paddingVertical: 10,
-  },
-  followBtnOutlined: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-  },
-  followBtnText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 15 },
-  followBtnTextOutlined: { color: Colors.primary, fontFamily: Fonts.bold },
-  pillRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  pill: {
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: Radius.xl,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: Colors.surface,
-  },
-  pillText: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold },
-  privateLabel: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textSecondary },
-});

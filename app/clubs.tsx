@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,11 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/lib/auth';
 import { getMyClubs, createClub, type ClubSummary } from '@/lib/clubs';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 export default function ClubsScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
   const userId = session?.user.id ?? '';
@@ -57,6 +59,78 @@ export default function ClubsScreen() {
     }
   };
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.sm,
+    },
+    title: { fontSize: 24, fontFamily: Fonts.bold, color: colors.textPrimary },
+    newBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 8,
+    },
+    newBtnText: { color: colors.surface, fontFamily: Fonts.semiBold, fontSize: 14 },
+    list: { padding: Spacing.lg, gap: Spacing.sm },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: 4,
+      ...Shadow.card,
+    },
+    clubName: { fontSize: 16, fontFamily: Fonts.bold, color: colors.textPrimary },
+    currentBook: { fontSize: 14, fontFamily: Fonts.regular, color: colors.primary },
+    noBook: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textTertiary },
+    memberCount: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary },
+    emptyText: {
+      textAlign: 'center',
+      marginTop: 48,
+      color: colors.textSecondary,
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+    },
+    modal: { flex: 1, backgroundColor: colors.background },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: colors.textPrimary },
+    cancelText: { color: colors.primary, fontSize: 16, fontFamily: Fonts.regular },
+    form: { padding: Spacing.lg, gap: Spacing.sm },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 14,
+      fontSize: 16,
+      fontFamily: Fonts.regular,
+      color: colors.textPrimary,
+    },
+    descInput: { minHeight: 80, textAlignVertical: 'top' },
+    primaryBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginTop: Spacing.sm,
+    },
+    primaryBtnText: { color: colors.surface, fontSize: 16, fontFamily: Fonts.bold },
+  }), [colors]);
+
   if (!session) return null;
 
   return (
@@ -73,7 +147,7 @@ export default function ClubsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginTop: 32 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
       ) : clubs.length === 0 ? (
         <Text style={styles.emptyText}>You're not in any clubs yet.</Text>
       ) : (
@@ -111,14 +185,14 @@ export default function ClubsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Club name"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={clubName}
               onChangeText={setClubName}
             />
             <TextInput
               style={[styles.input, styles.descInput]}
               placeholder="Description (optional)"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={clubDesc}
               onChangeText={setClubDesc}
               multiline
@@ -139,75 +213,3 @@ export default function ClubsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  title: { fontSize: 24, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  newBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-  },
-  newBtnText: { color: Colors.surface, fontFamily: Fonts.semiBold, fontSize: 14 },
-  list: { padding: Spacing.lg, gap: Spacing.sm },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: 4,
-    ...Shadow.card,
-  },
-  clubName: { fontSize: 16, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  currentBook: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.primary },
-  noBook: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textTertiary },
-  memberCount: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 48,
-    color: Colors.textSecondary,
-    fontSize: 15,
-    fontFamily: Fonts.regular,
-  },
-  modal: { flex: 1, backgroundColor: Colors.background },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  cancelText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.regular },
-  form: { padding: Spacing.lg, gap: Spacing.sm },
-  input: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: Fonts.regular,
-    color: Colors.textPrimary,
-  },
-  descInput: { minHeight: 80, textAlignVertical: 'top' },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  primaryBtnText: { color: Colors.surface, fontSize: 16, fontFamily: Fonts.bold },
-});

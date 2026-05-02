@@ -37,6 +37,32 @@ export async function getFollowStatus(
   return 'none';
 }
 
+/** Lightweight search returning just id + username — for @mention autocomplete. */
+export async function searchUsernames(
+  query: string,
+  currentUserId: string,
+): Promise<{ id: string; username: string }[]> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .ilike('username', `${query}%`)
+    .neq('id', currentUserId)
+    .limit(6);
+  return (data ?? []) as { id: string; username: string }[];
+}
+
+/** Look up user IDs for a list of usernames (for mention notifications). */
+export async function getUserIdsByUsernames(
+  usernames: string[],
+): Promise<{ id: string; username: string }[]> {
+  if (usernames.length === 0) return [];
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in('username', usernames);
+  return (data ?? []) as { id: string; username: string }[];
+}
+
 export async function searchUsers(
   query: string,
   currentUserId: string

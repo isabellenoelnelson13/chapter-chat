@@ -83,6 +83,98 @@ export async function getFeed(userId: string): Promise<ActivityEvent[]> {
   }));
 }
 
+export async function getFriendsFeed(userId: string, limit = 5): Promise<ActivityEvent[]> {
+  const { data: followsData } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', userId);
+  const followingIds = (followsData ?? []).map((r: any) => r.following_id);
+  if (followingIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('activity_events')
+    .select(
+      `id, event_type, book_id, metadata, created_at,
+       actor:profiles!actor_id(id, username),
+       book:books!book_id(id, title, cover_url)`
+    )
+    .in('actor_id', followingIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return (data ?? []).map((e: any) => ({
+    id: e.id,
+    actorId: e.actor.id,
+    actorUsername: e.actor.username,
+    eventType: e.event_type as EventType,
+    bookId: e.book_id,
+    bookTitle: e.book.title,
+    bookCoverUrl: e.book.cover_url,
+    metadata: e.metadata,
+    createdAt: e.created_at,
+    likeCount: 0,
+    commentCount: 0,
+    likedByMe: false,
+  }));
+}
+
+export interface ActivityLike {
+  userId: string;
+  username: string;
+}
+
+export async function getEventById(eventId: string, userId: string): Promise<ActivityEvent | null> {
+  const { data, error } = await supabase
+    .from('activity_events')
+    .select(
+      `id, event_type, book_id, metadata, created_at,
+       actor:profiles!actor_id(id, username),
+       book:books!book_id(id, title, cover_url),
+       likes:activity_likes(count),
+       comments:activity_comments(count)`
+    )
+    .eq('id', eventId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const { data: likedData } = await supabase
+    .from('activity_likes')
+    .select('event_id')
+    .eq('user_id', userId)
+    .eq('event_id', eventId);
+  const likedByMe = (likedData ?? []).length > 0;
+
+  const e = data as any;
+  return {
+    id: e.id,
+    actorId: e.actor.id,
+    actorUsername: e.actor.username,
+    eventType: e.event_type as EventType,
+    bookId: e.book_id,
+    bookTitle: e.book.title,
+    bookCoverUrl: e.book.cover_url,
+    metadata: e.metadata,
+    createdAt: e.created_at,
+    likeCount: e.likes?.[0]?.count ?? 0,
+    commentCount: e.comments?.[0]?.count ?? 0,
+    likedByMe,
+  };
+}
+
+export async function getEventLikes(eventId: string): Promise<ActivityLike[]> {
+  const { data, error } = await supabase
+    .from('activity_likes')
+    .select('user_id, user:profiles!user_id(username)')
+    .eq('event_id', eventId);
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    userId: r.user_id,
+    username: r.user.username,
+  }));
+}
+
 export async function createEvent(
   actorId: string,
   eventType: EventType,

@@ -99,6 +99,8 @@ export interface Database {
           added_at: string;
           started_at: string | null;
           finished_at: string | null;
+          format: 'physical' | 'ebook' | 'audiobook';
+          progress_percent: number | null;
         };
         Insert: {
           id?: string;
@@ -111,6 +113,8 @@ export interface Database {
           added_at?: string;
           started_at?: string | null;
           finished_at?: string | null;
+          format?: 'physical' | 'ebook' | 'audiobook';
+          progress_percent?: number | null;
         };
         Update: {
           shelf?: Shelf;
@@ -119,6 +123,8 @@ export interface Database {
           review?: string | null;
           started_at?: string | null;
           finished_at?: string | null;
+          format?: 'physical' | 'ebook' | 'audiobook';
+          progress_percent?: number | null;
         };
       };
       reading_sessions: {
@@ -364,6 +370,80 @@ export interface Database {
           body?: string | null;
           date_added?: string | null;
           helpful_votes?: number;
+        };
+      };
+      inbox_notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          body: string;
+          data: Record<string, unknown> | null;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          body: string;
+          data?: Record<string, unknown> | null;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          read?: boolean;
+        };
+      };
+      push_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token: string;
+          created_at?: string;
+        };
+        Update: {
+          token?: string;
+        };
+      };
+      notification_preferences: {
+        Row: {
+          user_id: string;
+          reading_reminder_enabled: boolean;
+          reading_reminder_hour: number;
+          reading_reminder_minute: number;
+          streak_protection_enabled: boolean;
+          club_posts_enabled: boolean;
+          weekly_summary_enabled: boolean;
+          comment_notifications_enabled: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          reading_reminder_enabled?: boolean;
+          reading_reminder_hour?: number;
+          reading_reminder_minute?: number;
+          streak_protection_enabled?: boolean;
+          club_posts_enabled?: boolean;
+          weekly_summary_enabled?: boolean;
+          comment_notifications_enabled?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          reading_reminder_enabled?: boolean;
+          reading_reminder_hour?: number;
+          reading_reminder_minute?: number;
+          streak_protection_enabled?: boolean;
+          club_posts_enabled?: boolean;
+          weekly_summary_enabled?: boolean;
+          comment_notifications_enabled?: boolean;
+          updated_at?: string;
         };
       };
     };

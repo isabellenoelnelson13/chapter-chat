@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getThread, addPost, type ClubPost } from '@/lib/clubs';
-import { Colors, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Spacing, Radius, Shadow } from '@/constants/theme';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -28,6 +29,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function ClubPostScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
   const { clubId, postId } = useLocalSearchParams<{ clubId: string; postId: string }>();
@@ -56,12 +58,69 @@ export default function ClubPostScreen() {
     setReplies((prev) => [...prev, newReply]);
   };
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    backBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      gap: 4,
+    },
+    backText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
+    scroll: { padding: Spacing.lg, gap: Spacing.md },
+    parentCard: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: 6,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+      ...Shadow.card,
+    },
+    replyCard: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      gap: 4,
+      marginLeft: Spacing.lg,
+      ...Shadow.card,
+    },
+    postUsername: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+    parentBody: { fontSize: 16, color: colors.textPrimary, lineHeight: 22 },
+    replyBody: { fontSize: 14, color: colors.textPrimary, lineHeight: 20 },
+    timestamp: { fontSize: 11, color: colors.textTertiary },
+    emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 24 },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.textPrimary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+  }), [colors]);
+
   if (!session) return null;
 
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Ionicons name="chevron-back" size={24} color={Colors.primary} />
+        <Ionicons name="chevron-back" size={24} color={colors.primary} />
         <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
@@ -71,7 +130,7 @@ export default function ClubPostScreen() {
       >
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator color={Colors.primary} />
+            <ActivityIndicator color={colors.primary} />
           </View>
         ) : (
           <ScrollView
@@ -104,72 +163,15 @@ export default function ClubPostScreen() {
           <TextInput
             style={styles.input}
             placeholder="Write a reply..."
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={replyText}
             onChangeText={setReplyText}
           />
           <TouchableOpacity onPress={handleSendReply} testID="send-reply-btn">
-            <Ionicons name="send" size={22} color={Colors.primary} />
+            <Ionicons name="send" size={22} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    gap: 4,
-  },
-  backText: { color: Colors.primary, fontSize: 16, fontWeight: '600' },
-  scroll: { padding: Spacing.lg, gap: Spacing.md },
-  parentCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: 6,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-    ...Shadow.card,
-  },
-  replyCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: 4,
-    marginLeft: Spacing.lg,
-    ...Shadow.card,
-  },
-  postUsername: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  parentBody: { fontSize: 16, color: Colors.textPrimary, lineHeight: 22 },
-  replyBody: { fontSize: 14, color: Colors.textPrimary, lineHeight: 20 },
-  timestamp: { fontSize: 11, color: Colors.textTertiary },
-  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginTop: 24 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-});

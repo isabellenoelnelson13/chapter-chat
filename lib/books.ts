@@ -13,17 +13,22 @@ export interface BookSearchResult {
   description: string | null;
   rating: number | null;
   users_read_count: number;
+  series_id: string | null;
+  series_name: string | null;
+  series_position: number | null;
 }
 
 async function callBooksFunction(body: object): Promise<BookSearchResult[]> {
   const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/books`;
   const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? anonKey;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
   });
@@ -35,6 +40,64 @@ export async function searchBooks(query: string): Promise<BookSearchResult[]> {
   return callBooksFunction({ action: 'search', query });
 }
 
+async function fetchGoogleBooksGenres(title: string, author: string): Promise<string[] | null> {
+  try {
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ?? '';
+    const q = encodeURIComponent(`intitle:${title} inauthor:${author}`);
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&key=${apiKey}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const categories: string[] = [];
+    for (const item of json.items ?? []) {
+      for (const cat of item.volumeInfo?.categories ?? []) {
+        // "Juvenile Fiction / Fantasy & Magic" → "Fantasy & Magic", dedupe
+        const top = (cat as string).split('/').pop()!.trim();
+        if (top && !categories.includes(top)) categories.push(top);
+      }
+    }
+    return categories.length > 0 ? categories : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshBookGenres(bookId: string, title: string, author: string): Promise<void> {
+  const genres = await fetchGoogleBooksGenres(title, author);
+  if (!genres) return;
+  await supabase.from('books').update({ genres }).eq('id', bookId);
+}
+
+export async function searchGoogleImages(query: string): Promise<string[]> {
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ?? '';
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&key=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Google Books image search error: ${res.status}`);
+  const json = await res.json();
+  return (json.items ?? [])
+    .map((item: any) => {
+      const links = item.volumeInfo?.imageLinks;
+      return links?.large ?? links?.medium ?? links?.thumbnail ?? null;
+    })
+    .filter(Boolean)
+    .map((url: string) => url.replace('http://', 'https://'));
+}
+
+export async function updateBookGenres(bookId: string, genres: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('books')
+    .update({ genres })
+    .eq('id', bookId);
+  if (error) throw error;
+}
+
+export async function updateCoverUrl(bookId: string, coverUrl: string): Promise<void> {
+  const { error } = await supabase
+    .from('books')
+    .update({ cover_url: coverUrl })
+    .eq('id', bookId);
+  if (error) throw error;
+}
+
 export async function updatePageCount(bookId: string, pageCount: number): Promise<void> {
   const { error } = await supabase
     .from('books')
@@ -44,6 +107,7 @@ export async function updatePageCount(bookId: string, pageCount: number): Promis
 }
 
 export async function upsertBook(book: BookSearchResult): Promise<string> {
+  const googleGenres = await fetchGoogleBooksGenres(book.title, book.author);
   const { data, error } = await supabase
     .from('books')
     .upsert(
@@ -53,10 +117,13 @@ export async function upsertBook(book: BookSearchResult): Promise<string> {
         author: book.author,
         cover_url: book.cover_url,
         page_count: book.page_count,
-        genres: book.genres,
+        genres: googleGenres ?? book.genres,
         description: book.description,
         rating: book.rating,
         users_read_count: book.users_read_count,
+        series_id: book.series_id,
+        series_name: book.series_name,
+        series_position: book.series_position,
       },
       { onConflict: 'hardcover_id' }
     )
@@ -97,12 +164,14 @@ export async function getHardcoverReviews(
 ): Promise<HardcoverReview[]> {
   const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/books`;
   const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? anonKey;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ action: 'reviews', hardcover_id: hardcoverId, limit }),
   });
@@ -118,6 +187,38 @@ export async function getBookById(bookId: string): Promise<BookDetails | null> {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+export async function getSeriesBooks(seriesId: string): Promise<BookSearchResult[]> {
+  return callBooksFunction({ action: 'series', series_id: seriesId });
+}
+
+/** Fetches series fields from Hardcover for a book already in the DB and writes them back. */
+export async function refreshBookSeries(bookId: string, hardcoverId: string): Promise<void> {
+  const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/books`;
+  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? anonKey;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action: 'book', hardcover_id: hardcoverId }),
+  });
+  if (!res.ok) return;
+  const result: BookSearchResult | null = await res.json();
+  if (!result) return;
+  await supabase
+    .from('books')
+    .update({
+      series_id: result.series_id,
+      series_name: result.series_name,
+      series_position: result.series_position,
+    })
+    .eq('id', bookId);
 }
 
 export async function getBookReviews(

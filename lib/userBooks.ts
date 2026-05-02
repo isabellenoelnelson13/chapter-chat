@@ -3,6 +3,8 @@ import { Shelf, Database } from '../types/database';
 
 type BookRow = Database['public']['Tables']['books']['Row'];
 
+export type BookFormat = 'physical' | 'ebook' | 'audiobook';
+
 export interface UserBookWithBook {
   id: string;
   user_id: string;
@@ -14,6 +16,8 @@ export interface UserBookWithBook {
   added_at: string;
   started_at: string | null;
   finished_at: string | null;
+  format: BookFormat;
+  progress_percent: number | null;
   book: Pick<BookRow, 'id' | 'title' | 'author' | 'cover_url' | 'page_count' | 'rating' | 'users_read_count'> & {
     description: string | null;
   };
@@ -71,6 +75,22 @@ export async function updateCurrentPage(userBookId: string, currentPage: number)
   const { error } = await supabase
     .from('user_books')
     .update({ current_page: currentPage })
+    .eq('id', userBookId);
+  if (error) throw error;
+}
+
+export async function updateFormat(userBookId: string, format: BookFormat): Promise<void> {
+  const { error } = await supabase
+    .from('user_books')
+    .update({ format })
+    .eq('id', userBookId);
+  if (error) throw error;
+}
+
+export async function updateProgressPercent(userBookId: string, percent: number): Promise<void> {
+  const { error } = await supabase
+    .from('user_books')
+    .update({ progress_percent: Math.min(100, Math.max(0, percent)) })
     .eq('id', userBookId);
   if (error) throw error;
 }

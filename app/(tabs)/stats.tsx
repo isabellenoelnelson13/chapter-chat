@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -20,18 +20,22 @@ import {
   getReadingHistory,
   getMonthlyBooks,
   getGenreBreakdown,
+  getYearlyReadingStats,
+  getReadingByDayOfWeek,
+  getRatingStats,
   type DailyReading,
   type MonthlyBooks,
   type GenreCount,
   type YearlyGoalProgress,
+  type YearlyReadingStats,
+  type RatingStats,
 } from '@/lib/stats';
-import { Colors, Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/lib/theme';
+import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - 2 * Spacing.lg - 2 * Spacing.md;
 const PIE_COLORS = ['#7C6FCD', '#A599E9', '#5B4FB0', '#C4BCF0', '#3D3580', '#E8E4FA'];
-const BAR_COLOR = '#A599E9';
-const BAR_COLOR_SELECTED = '#7C6FCD';
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function formatTooltipDate(dateStr: string): string {
@@ -42,8 +46,12 @@ function formatTooltipDate(dateStr: string): string {
 type Period = 'week' | 'month';
 
 export default function StatsScreen() {
+  const { colors } = useTheme();
   const { session } = useAuth();
   const userId = session?.user.id ?? '';
+
+  const barColor = colors.textTertiary;
+  const barColorSelected = colors.primary;
 
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('week');
@@ -57,6 +65,9 @@ export default function StatsScreen() {
   const [monthHistory, setMonthHistory] = useState<DailyReading[]>([]);
   const [monthly, setMonthly] = useState<MonthlyBooks[]>([]);
   const [genres, setGenres] = useState<GenreCount[]>([]);
+  const [yearlyStats, setYearlyStats] = useState<YearlyReadingStats>({ totalPages: 0, totalHours: 0, totalSessions: 0, avgPagesPerSession: 0 });
+  const [dayOfWeek, setDayOfWeek] = useState<{ day: string; pages: number }[]>([]);
+  const [ratingStats, setRatingStats] = useState<RatingStats>({ average: 0, distribution: [1,2,3,4,5].map(stars => ({ stars, count: 0 })), totalRated: 0 });
 
   useFocusEffect(
     useCallback(() => {
@@ -70,7 +81,10 @@ export default function StatsScreen() {
         getReadingHistory(userId, 30),
         getMonthlyBooks(userId, new Date().getFullYear()),
         getGenreBreakdown(userId),
-      ]).then(([s, p, yg, wh, mh, m, g]) => {
+        getYearlyReadingStats(userId),
+        getReadingByDayOfWeek(userId),
+        getRatingStats(userId),
+      ]).then(([s, p, yg, wh, mh, m, g, ys, dow, rs]) => {
         if (s.status === 'fulfilled') setStreak(s.value);
         if (p.status === 'fulfilled') setPace(p.value);
         if (yg.status === 'fulfilled') setYearlyGoal(yg.value);
@@ -78,6 +92,9 @@ export default function StatsScreen() {
         if (mh.status === 'fulfilled') setMonthHistory(mh.value);
         if (m.status === 'fulfilled') setMonthly(m.value);
         if (g.status === 'fulfilled') setGenres(g.value);
+        if (ys.status === 'fulfilled') setYearlyStats(ys.value);
+        if (dow.status === 'fulfilled') setDayOfWeek(dow.value);
+        if (rs.status === 'fulfilled') setRatingStats(rs.value);
         setLoading(false);
         setChartKey(k => k + 1);
       });
@@ -90,12 +107,124 @@ export default function StatsScreen() {
     setSelectedBarIndex(null);
   }, [period]);
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scroll: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xl },
+    title: { fontSize: 32, fontFamily: Fonts.bold, color: colors.primary },
+
+    row: { flexDirection: 'row', gap: Spacing.sm },
+    statCard: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      alignItems: 'center',
+      gap: 6,
+      ...Shadow.card,
+    },
+    statValue: { fontSize: 22, fontFamily: Fonts.bold, color: colors.textPrimary },
+    statLabel: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary },
+
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      ...Shadow.card,
+    },
+    cardTitle: { fontSize: 15, fontFamily: Fonts.bold, color: colors.textPrimary, marginBottom: 8 },
+    goalText: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, marginBottom: 8 },
+    progressTrack: {
+      height: 8,
+      backgroundColor: colors.progressTrack,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    progressFill: { height: 8, backgroundColor: colors.primary, borderRadius: 4 },
+
+    chartHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: Spacing.md,
+    },
+    chartTitle: {
+      fontSize: 16,
+      fontFamily: Fonts.bold,
+      color: colors.textPrimary,
+    },
+    chartSubtitle: {
+      fontSize: 12,
+      fontFamily: Fonts.regular,
+      color: colors.textTertiary,
+      marginBottom: Spacing.sm,
+    },
+    toggle: {
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      borderRadius: Radius.xl,
+      padding: 2,
+    },
+    toggleBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: Radius.xl,
+    },
+    toggleBtnActive: {
+      backgroundColor: colors.surface,
+      ...Shadow.card,
+    },
+    toggleText: { fontSize: 12, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    toggleTextActive: { color: colors.primary, fontFamily: Fonts.semiBold },
+
+    emptyText: {
+      fontSize: 14,
+      fontFamily: Fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingVertical: 16,
+    },
+    axisLabel: { color: colors.textTertiary, fontSize: 10, fontFamily: Fonts.regular },
+    dateRange: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textTertiary, textAlign: 'center', marginTop: 4 },
+    tooltipRow: {
+      alignItems: 'center',
+      marginBottom: Spacing.sm,
+      minHeight: 28,
+    },
+    tooltip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#EDE9FA',
+      borderRadius: Radius.xl,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      gap: 8,
+    },
+    tooltipDate: { color: colors.primary, fontSize: 13, fontFamily: Fonts.semiBold },
+    tooltipDivider: { width: 1, height: 12, backgroundColor: '#C4BCF0' },
+    tooltipPages: { color: colors.textPrimary, fontSize: 13, fontFamily: Fonts.bold },
+    tooltipHint: { color: colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
+    barTopLabel: { fontSize: 9, fontFamily: Fonts.regular, color: colors.textSecondary, marginBottom: 2 },
+
+    ratingAvgRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: Spacing.sm },
+    ratingAvgStar: { fontSize: 22, color: colors.orange, fontFamily: Fonts.bold },
+    ratingAvgValue: { fontSize: 28, fontFamily: Fonts.bold, color: colors.textPrimary },
+    ratingAvgSub: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
+
+    pieRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    legend: { flex: 1, gap: 8 },
+    legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    legendDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+    legendText: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary, flex: 1 },
+    legendCount: { fontFamily: Fonts.bold, color: colors.textPrimary },
+  }), [colors]);
+
   if (!session) return null;
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={Colors.primary} />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -104,13 +233,13 @@ export default function StatsScreen() {
   const weekBarData = weekHistory.map((d, i) => ({
     value: d.pages,
     label: DAY_LABELS[new Date(d.date + 'T00:00:00Z').getUTCDay()],
-    frontColor: i === selectedBarIndex ? BAR_COLOR_SELECTED : BAR_COLOR,
+    frontColor: i === selectedBarIndex ? barColorSelected : barColor,
   }));
 
   const monthBarData = monthHistory.map((d, i) => ({
     value: d.pages,
     label: '',
-    frontColor: i === selectedBarIndex ? BAR_COLOR_SELECTED : BAR_COLOR,
+    frontColor: i === selectedBarIndex ? barColorSelected : barColor,
   }));
 
   const monthDateRange = monthHistory.length > 0
@@ -132,9 +261,27 @@ export default function StatsScreen() {
   const booksBarData = monthly.map(m => ({
     value: m.count,
     label: m.month,
-    frontColor: Colors.primary,
+    frontColor: colors.primary,
   }));
   const hasBarData = monthly.some(m => m.count > 0);
+
+  // Day of week chart
+  const dowBarData = dayOfWeek.map((d, i) => ({
+    value: d.pages,
+    label: d.day,
+    frontColor: i === new Date().getDay() ? barColorSelected : barColor,
+  }));
+  const hasDowData = dayOfWeek.some(d => d.pages > 0);
+
+  // Rating bar chart
+  const ratingBarData = ratingStats.distribution.map(({ stars, count }) => ({
+    value: count,
+    label: `${stars}★`,
+    frontColor: stars >= 4 ? colors.primary : barColor,
+  }));
+  const hasRatingData = ratingStats.totalRated > 0;
+  const ratingBarWidth = Math.floor((CHART_WIDTH - 40) / 5 * 0.5);
+  const ratingBarSpacing = Math.floor((CHART_WIDTH - 40) / 5 * 0.5);
 
   // Genre pie chart
   const topGenres = genres.slice(0, 6);
@@ -156,14 +303,40 @@ export default function StatsScreen() {
         {/* Streak + pace */}
         <View style={styles.row}>
           <View style={styles.statCard}>
-            <Ionicons name="flame" size={20} color={Colors.orange} />
+            <Ionicons name="flame" size={20} color={colors.orange} />
             <Text style={styles.statValue}>{streak}</Text>
             <Text style={styles.statLabel}>Day streak</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="book-outline" size={20} color={Colors.primary} />
+            <Ionicons name="book-outline" size={20} color={colors.primary} />
             <Text style={styles.statValue}>{pace}</Text>
             <Text style={styles.statLabel}>Pages/day avg</Text>
+          </View>
+        </View>
+
+        {/* This year summary */}
+        <View style={styles.row}>
+          <View style={styles.statCard}>
+            <Ionicons name="documents-outline" size={20} color={colors.primary} />
+            <Text style={styles.statValue}>{yearlyStats.totalPages.toLocaleString()}</Text>
+            <Text style={styles.statLabel}>Pages this year</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
+            <Text style={styles.statValue}>{yearlyStats.totalHours}h</Text>
+            <Text style={styles.statLabel}>Hours read</Text>
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.statCard}>
+            <Ionicons name="layers-outline" size={20} color={colors.primary} />
+            <Text style={styles.statValue}>{yearlyStats.totalSessions}</Text>
+            <Text style={styles.statLabel}>Sessions</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="trending-up-outline" size={20} color={colors.primary} />
+            <Text style={styles.statValue}>{yearlyStats.avgPagesPerSession}</Text>
+            <Text style={styles.statLabel}>Avg pages/session</Text>
           </View>
         </View>
 
@@ -232,34 +405,67 @@ export default function StatsScreen() {
                   </View>
                 );
               })()}
-              <BarChart
-                key={`pages-${chartKey}`}
-                data={activeBarData}
-                width={CHART_WIDTH}
-                height={200}
-                barWidth={barWidth}
-                spacing={barSpacing}
-                roundedTop
-                isAnimated
-                animationDuration={700}
-                noOfSections={4}
-                maxValue={Math.ceil(maxPages / 4) * 4 + 4}
-                rulesType="dashed"
-                rulesColor={Colors.border}
-                xAxisThickness={0}
-                yAxisThickness={0}
-                yAxisTextStyle={styles.axisLabel}
-                xAxisLabelTextStyle={styles.axisLabel}
-                hideRules={false}
-                disableScroll
-                onPress={(_item: any, index: number) =>
-                  setSelectedBarIndex(prev => (prev === index ? null : index))
-                }
-              />
+              <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
+                <BarChart
+                  key={`pages-${chartKey}`}
+                  data={activeBarData}
+                  width={CHART_WIDTH}
+                  height={200}
+                  barWidth={barWidth}
+                  spacing={barSpacing}
+                  roundedTop
+                  isAnimated
+                  animationDuration={700}
+                  noOfSections={4}
+                  maxValue={Math.ceil(maxPages / 4) * 4 + 4}
+                  rulesType="dashed"
+                  rulesColor={colors.border}
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  yAxisTextStyle={styles.axisLabel}
+                  xAxisLabelTextStyle={styles.axisLabel}
+                  hideRules={false}
+                  disableScroll
+                  onPress={(_item: any, index: number) =>
+                    setSelectedBarIndex(prev => (prev === index ? null : index))
+                  }
+                />
+              </View>
               {period === 'month' && (
                 <Text style={styles.dateRange}>{monthDateRange}</Text>
               )}
             </>
+          )}
+        </View>
+
+        {/* Reading by day of week */}
+        <View style={styles.card}>
+          <Text style={styles.chartTitle}>Reading by Day of Week</Text>
+          <Text style={styles.chartSubtitle}>Avg pages per session</Text>
+          {!hasDowData ? (
+            <Text style={styles.emptyText}>Log sessions to see your reading patterns</Text>
+          ) : (
+            <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
+              <BarChart
+                key={`dow-${chartKey}`}
+                data={dowBarData}
+                width={CHART_WIDTH}
+                height={160}
+                barWidth={weekBarWidth}
+                spacing={weekSpacing}
+                roundedTop
+                isAnimated
+                animationDuration={700}
+                noOfSections={3}
+                rulesType="dashed"
+                rulesColor={colors.border}
+                xAxisThickness={0}
+                yAxisThickness={0}
+                yAxisTextStyle={styles.axisLabel}
+                xAxisLabelTextStyle={styles.axisLabel}
+                disableScroll
+              />
+            </View>
           )}
         </View>
 
@@ -269,25 +475,64 @@ export default function StatsScreen() {
           {!hasBarData ? (
             <Text style={styles.emptyText}>No books finished yet this year</Text>
           ) : (
-            <BarChart
-              key={`books-${chartKey}`}
-              data={booksBarData}
-              width={CHART_WIDTH}
-              height={160}
-              barWidth={18}
-              spacing={Math.floor((CHART_WIDTH - 40) / 12 - 18)}
-              roundedTop
-              isAnimated
-              animationDuration={700}
-              noOfSections={3}
-              rulesType="dashed"
-              rulesColor={Colors.border}
-              xAxisThickness={0}
-              yAxisThickness={0}
-              yAxisTextStyle={styles.axisLabel}
-              xAxisLabelTextStyle={styles.axisLabel}
-              disableScroll
-            />
+            <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
+              <BarChart
+                key={`books-${chartKey}`}
+                data={booksBarData}
+                width={CHART_WIDTH}
+                height={160}
+                barWidth={18}
+                spacing={Math.floor((CHART_WIDTH - 40) / 12 - 18)}
+                roundedTop
+                isAnimated
+                animationDuration={700}
+                noOfSections={3}
+                rulesType="dashed"
+                rulesColor={colors.border}
+                xAxisThickness={0}
+                yAxisThickness={0}
+                yAxisTextStyle={styles.axisLabel}
+                xAxisLabelTextStyle={styles.axisLabel}
+                disableScroll
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Rating distribution */}
+        <View style={styles.card}>
+          <Text style={styles.chartTitle}>My Ratings</Text>
+          {!hasRatingData ? (
+            <Text style={styles.emptyText}>Rate books to see your distribution</Text>
+          ) : (
+            <>
+              <View style={styles.ratingAvgRow}>
+                <Text style={styles.ratingAvgStar}>★</Text>
+                <Text style={styles.ratingAvgValue}>{ratingStats.average}</Text>
+                <Text style={styles.ratingAvgSub}>avg · {ratingStats.totalRated} {ratingStats.totalRated === 1 ? 'book' : 'books'} rated</Text>
+              </View>
+              <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
+                <BarChart
+                  key={`rating-${chartKey}`}
+                  data={ratingBarData}
+                  width={CHART_WIDTH}
+                  height={160}
+                  barWidth={ratingBarWidth}
+                  spacing={ratingBarSpacing}
+                  roundedTop
+                  isAnimated
+                  animationDuration={700}
+                  noOfSections={3}
+                  rulesType="dashed"
+                  rulesColor={colors.border}
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  yAxisTextStyle={styles.axisLabel}
+                  xAxisLabelTextStyle={styles.axisLabel}
+                  disableScroll
+                />
+              </View>
+            </>
           )}
         </View>
 
@@ -325,104 +570,3 @@ export default function StatsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xl },
-  title: { fontSize: 32, fontFamily: Fonts.bold, color: Colors.primary },
-
-  row: { flexDirection: 'row', gap: Spacing.sm },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    alignItems: 'center',
-    gap: 6,
-    ...Shadow.card,
-  },
-  statValue: { fontSize: 22, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  statLabel: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.textSecondary },
-
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    ...Shadow.card,
-  },
-  cardTitle: { fontSize: 15, fontFamily: Fonts.bold, color: Colors.textPrimary, marginBottom: 8 },
-  goalText: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, marginBottom: 8 },
-  progressTrack: {
-    height: 8,
-    backgroundColor: Colors.progressTrack,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: { height: 8, backgroundColor: Colors.primary, borderRadius: 4 },
-
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontFamily: Fonts.bold,
-    color: Colors.textPrimary,
-  },
-  toggle: {
-    flexDirection: 'row',
-    backgroundColor: Colors.background,
-    borderRadius: Radius.xl,
-    padding: 2,
-  },
-  toggleBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: Radius.xl,
-  },
-  toggleBtnActive: {
-    backgroundColor: Colors.surface,
-    ...Shadow.card,
-  },
-  toggleText: { fontSize: 12, fontFamily: Fonts.semiBold, color: Colors.textSecondary },
-  toggleTextActive: { color: Colors.primary, fontFamily: Fonts.semiBold },
-
-  emptyText: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    paddingVertical: 16,
-  },
-  axisLabel: { color: Colors.textTertiary, fontSize: 10, fontFamily: Fonts.regular },
-  dateRange: { fontSize: 11, fontFamily: Fonts.regular, color: Colors.textTertiary, textAlign: 'center', marginTop: 4 },
-  tooltipRow: {
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-    minHeight: 28,
-  },
-  tooltip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EDE9FA',
-    borderRadius: Radius.xl,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    gap: 8,
-  },
-  tooltipDate: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold },
-  tooltipDivider: { width: 1, height: 12, backgroundColor: '#C4BCF0' },
-  tooltipPages: { color: Colors.textPrimary, fontSize: 13, fontFamily: Fonts.bold },
-  tooltipHint: { color: Colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
-  barTopLabel: { fontSize: 9, fontFamily: Fonts.regular, color: Colors.textSecondary, marginBottom: 2 },
-
-  pieRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  legend: { flex: 1, gap: 8 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  legendText: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, flex: 1 },
-  legendCount: { fontFamily: Fonts.bold, color: Colors.textPrimary },
-});
