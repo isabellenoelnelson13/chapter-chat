@@ -33,9 +33,10 @@ export async function removeFromShelf(userBookId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function addToShelf(userId: string, bookId: string, shelf: Shelf): Promise<string> {
+export async function addToShelf(userId: string, bookId: string, shelf: Shelf, format?: BookFormat): Promise<string> {
   const now = new Date().toISOString();
   const row: Record<string, unknown> = { user_id: userId, book_id: bookId, shelf, current_page: 0 };
+  if (format) row.format = format;
   if (shelf === 'reading') row.started_at = now;
   if (shelf === 'read') { row.started_at = now; row.finished_at = now; }
   const { data, error } = await supabase
