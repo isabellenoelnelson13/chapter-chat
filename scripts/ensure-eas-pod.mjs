@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, symlinkSync, existsSync } from 'node:fs';
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 if (process.env.EAS_BUILD_PLATFORM !== 'ios') {
@@ -33,8 +33,13 @@ if (!podPath) {
 
 mkdirSync(dirname(shimPath), { recursive: true });
 
-if (!existsSync(shimPath)) {
-  symlinkSync(podPath, shimPath);
-}
+writeFileSync(
+  shimPath,
+  `#!/bin/sh
+exec "${podPath}" "$@"
+`,
+);
+chmodSync(shimPath, 0o755);
 
 console.log(`CocoaPods available at ${podPath}`);
+console.log(`Wrote CocoaPods wrapper to ${shimPath}`);
