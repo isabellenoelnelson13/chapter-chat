@@ -13,4 +13,5 @@ struct ReadingSessionAttributes: ActivityAttributes {
 
     var bookTitle: String
     var author: String
+    var coverUrl: String
 }
