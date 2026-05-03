@@ -321,6 +321,14 @@ export default function BookDetailScreen() {
     datePickerTitle: { fontSize: 16, fontFamily: Fonts.semiBold, color: colors.textPrimary },
     datePickerCancel: { fontSize: 16, fontFamily: Fonts.regular, color: colors.textSecondary },
     datePickerDone: { fontSize: 16, fontFamily: Fonts.semiBold, color: colors.primary },
+
+    reviewSubheader: {
+      fontSize: 14,
+      fontFamily: Fonts.semiBold,
+      color: colors.textSecondary,
+      marginBottom: 8,
+      marginTop: 4,
+    },
   }), [colors]);
 
   if (!session) return null;
@@ -517,7 +525,7 @@ export default function BookDetailScreen() {
                 onPress={() => router.push(`/author/${book.goodreads_author_id}`)}
                 testID="author-link"
               >
-                <Text style={[styles.bookAuthor, { color: Colors.primary }]}>{book.author}</Text>
+                <Text style={[styles.bookAuthor, { color: colors.primary }]}>{book.author}</Text>
               </TouchableOpacity>
             ) : (
               <Text style={styles.bookAuthor}>{book.author}</Text>
@@ -885,110 +893,3 @@ export default function BookDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    gap: 4,
-  },
-  backText: { color: Colors.primary, fontSize: 16, fontFamily: Fonts.semiBold },
-  scroll: { padding: Spacing.lg, gap: Spacing.lg },
-
-  bookHeader: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
-  cover: { width: 140, height: 200, borderRadius: Radius.md },
-  coverPlaceholder: {
-    width: 140,
-    height: 200,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.border,
-  },
-  bookMeta: { flex: 1, gap: 6, paddingTop: 4 },
-  bookTitle: { fontSize: 20, fontFamily: Fonts.bookTitle, color: Colors.textPrimary },
-  bookAuthor: { fontSize: 15, fontFamily: Fonts.regular, color: Colors.textSecondary },
-
-  ratingBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  ratingBadgeText: { fontSize: 13, color: Colors.primary, fontFamily: Fonts.semiBold },
-  ratingBadgeReaders: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textTertiary },
-
-  pageCount: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textTertiary },
-  pageCountPlaceholder: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.primary },
-  pageInput: {
-    fontSize: 13,
-    fontFamily: Fonts.regular,
-    color: Colors.textPrimary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.primary,
-    paddingVertical: 2,
-    minWidth: 80,
-  },
-  notFound: { fontSize: 16, fontFamily: Fonts.regular, color: Colors.textSecondary },
-
-  sectionTitle: { fontSize: 17, fontFamily: Fonts.bold, color: Colors.textPrimary, marginBottom: 8 },
-  description: { fontSize: 14, fontFamily: Fonts.bookBody, color: Colors.textSecondary, lineHeight: 20 },
-  showMore: { color: Colors.primary, fontSize: 13, fontFamily: Fonts.semiBold, marginTop: 4 },
-
-  reviewCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadow.card,
-  },
-  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  reviewUsername: { fontSize: 13, fontFamily: Fonts.bold, color: Colors.textPrimary },
-  reviewRating: { fontSize: 12, fontFamily: Fonts.regular, color: Colors.primary },
-  reviewText: { fontSize: 13, fontFamily: Fonts.regular, color: Colors.textSecondary, lineHeight: 18 },
-  reviewSubheader: {
-    fontSize: 14,
-    fontFamily: Fonts.semiBold,
-    color: Colors.textSecondary,
-    marginBottom: 8,
-    marginTop: 4,
-  },
-
-  actions: { gap: Spacing.sm },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.xl,
-    paddingVertical: 14,
-    gap: 6,
-  },
-  primaryBtnText: { color: Colors.surface, fontFamily: Fonts.bold, fontSize: 15 },
-  secondaryBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: Radius.xl,
-    paddingVertical: 12,
-  },
-  secondaryBtnText: { color: Colors.primary, fontFamily: Fonts.semiBold, fontSize: 15 },
-
-  starRow: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
-  star: { fontSize: 32, color: Colors.primary },
-
-  datesCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    gap: Spacing.sm,
-  },
-  dateLabel: { fontSize: 14, fontFamily: Fonts.regular, color: Colors.textSecondary, width: 64 },
-  dateValue: { flex: 1, fontSize: 14, color: Colors.textPrimary, fontFamily: Fonts.medium },
-  dateDivider: { height: 1, backgroundColor: Colors.border, marginHorizontal: Spacing.md },
-});
