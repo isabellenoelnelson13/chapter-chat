@@ -189,6 +189,29 @@ export async function getBookById(bookId: string): Promise<BookDetails | null> {
   return data;
 }
 
+export async function createManualBook(params: {
+  title: string;
+  author?: string;
+  pageCount?: number;
+  coverUrl?: string;
+  description?: string;
+}): Promise<string> {
+  const { data, error } = await supabase
+    .from('books')
+    .insert({
+      hardcover_id: null,
+      title: params.title,
+      author: params.author ?? null,
+      page_count: params.pageCount ?? null,
+      cover_url: params.coverUrl ?? null,
+      description: params.description ?? null,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
 export async function getSeriesBooks(seriesId: string): Promise<BookSearchResult[]> {
   return callBooksFunction({ action: 'series', series_id: seriesId });
 }
