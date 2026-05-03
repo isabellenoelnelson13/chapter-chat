@@ -5,11 +5,12 @@ const { ReadingLiveActivity } = NativeModules;
 export async function startReadingActivity(
   bookTitle: string,
   author: string,
+  coverUrl: string,
   startPage: number
 ): Promise<void> {
   if (Platform.OS !== 'ios' || !ReadingLiveActivity) return;
   try {
-    await ReadingLiveActivity.startActivity(bookTitle, author, startPage);
+    await ReadingLiveActivity.startActivity(bookTitle, author, coverUrl, startPage);
   } catch (e) {
     console.error('[LiveActivity] startActivity error:', e);
   }

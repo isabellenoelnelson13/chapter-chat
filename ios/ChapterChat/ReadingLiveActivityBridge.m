@@ -4,6 +4,7 @@
 
 RCT_EXTERN_METHOD(startActivity:(NSString *)bookTitle
                   author:(NSString *)author
+                  coverUrl:(NSString *)coverUrl
                   startPage:(nonnull NSNumber *)startPage
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)

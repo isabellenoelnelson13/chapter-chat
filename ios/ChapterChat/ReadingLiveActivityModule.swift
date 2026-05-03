@@ -12,22 +12,24 @@ struct ReadingSessionAttributes: ActivityAttributes {
     }
     var bookTitle: String
     var author: String
+    var coverUrl: String
 }
 
 @objc(ReadingLiveActivity)
 class ReadingLiveActivity: NSObject {
     private var currentActivityBox: Any?
 
-    @objc(startActivity:author:startPage:resolver:rejecter:)
+    @objc(startActivity:author:coverUrl:startPage:resolver:rejecter:)
     func startActivity(_ bookTitle: String,
                        author: String,
+                       coverUrl: String,
                        startPage: NSNumber,
                        resolver: @escaping RCTPromiseResolveBlock,
                        rejecter: @escaping RCTPromiseRejectBlock) {
         guard #available(iOS 16.2, *) else { resolver(nil); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { resolver(nil); return }
 
-        let attributes = ReadingSessionAttributes(bookTitle: bookTitle, author: author)
+        let attributes = ReadingSessionAttributes(bookTitle: bookTitle, author: author, coverUrl: coverUrl)
         let state = ReadingSessionAttributes.ContentState(
             startDate: Date(),
             currentPage: startPage.intValue,
