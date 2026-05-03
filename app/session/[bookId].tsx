@@ -115,7 +115,6 @@ export default function SessionScreen() {
       startReadingActivity(
         userBook.book.title,
         userBook.book.author ?? '',
-        userBook.book.cover_url ?? '',
         parseInt(startPage, 10) || userBook.current_page
       );
     }

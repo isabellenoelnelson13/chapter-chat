@@ -1,24 +1,15 @@
-import { requireOptionalNativeModule } from 'expo-modules-core';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 
-type ReadingLiveActivityModule = {
-  startActivity(bookTitle: string, author: string, coverUrl: string, startPage: number): Promise<string | null>;
-  updateActivity(elapsedSeconds: number, currentPage: number, isPaused: boolean): Promise<void>;
-  endActivity(): Promise<void>;
-};
-
-const ReadingLiveActivity =
-  requireOptionalNativeModule<ReadingLiveActivityModule>('ReadingLiveActivity');
+const { ReadingLiveActivity } = NativeModules;
 
 export async function startReadingActivity(
   bookTitle: string,
   author: string,
-  coverUrl: string,
   startPage: number
 ): Promise<void> {
   if (Platform.OS !== 'ios' || !ReadingLiveActivity) return;
   try {
-    await ReadingLiveActivity.startActivity(bookTitle, author, coverUrl, startPage);
+    await ReadingLiveActivity.startActivity(bookTitle, author, startPage);
   } catch (e) {
     console.error('[LiveActivity] startActivity error:', e);
   }

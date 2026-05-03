@@ -17,28 +17,15 @@ private func formatElapsed(_ startDate: Date) -> String {
 struct ReadingWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ReadingSessionAttributes.self) { context in
-            HStack(spacing: 12) {
-                // Cover image
-                AsyncImage(url: URL(string: context.attributes.coverUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.purple.opacity(0.15))
-                        .overlay(
-                            Image(systemName: "book.closed.fill")
-                                .foregroundStyle(.purple.opacity(0.5))
-                        )
-                }
-                .frame(width: 40, height: 54)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+            HStack(spacing: 14) {
+                Image(systemName: "book.fill")
+                    .font(.title2)
+                    .foregroundStyle(.purple)
 
-                // Title and author
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(context.attributes.bookTitle)
                         .font(.system(.subheadline, weight: .semibold))
-                        .lineLimit(2)
+                        .lineLimit(1)
                     Text(context.attributes.author)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -47,41 +34,35 @@ struct ReadingWidgetLiveActivity: Widget {
 
                 Spacer()
 
-                // Timer + pause/play button
-                VStack(alignment: .trailing, spacing: 6) {
+                VStack(alignment: .trailing, spacing: 2) {
                     if context.state.isPaused {
                         Text(formatElapsed(context.state.startDate))
-                            .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                            .font(.system(.title3, design: .monospaced, weight: .semibold))
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     } else {
                         Text(context.state.startDate, style: .timer)
-                            .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                            .font(.system(.title3, design: .monospaced, weight: .semibold))
                             .foregroundStyle(.purple)
                             .monospacedDigit()
                     }
-
-                    Link(destination: URL(string: "chapterchat://")!) {
-                        Image(systemName: context.state.isPaused ? "play.circle.fill" : "pause.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.purple)
+                    if context.state.isPaused {
+                        Text("Paused")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("p.\(context.state.currentPage)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding()
             .activityBackgroundTint(Color(.systemBackground))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    AsyncImage(url: URL(string: context.attributes.coverUrl)) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Color.purple.opacity(0.2)
-                    }
-                    .frame(width: 28, height: 38)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                    .padding(.leading, 4)
+                    Image(systemName: "book.fill").foregroundStyle(.purple)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if context.state.isPaused {
@@ -89,35 +70,15 @@ struct ReadingWidgetLiveActivity: Widget {
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
-                            .padding(.trailing, 4)
                     } else {
                         Text(context.state.startDate, style: .timer)
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.purple)
                             .monospacedDigit()
-                            .padding(.trailing, 4)
                     }
-                }
-                DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        Text(context.attributes.bookTitle)
-                            .font(.caption)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(context.state.isPaused ? "Paused" : "p.\(context.state.currentPage)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 4)
                 }
             } compactLeading: {
-                AsyncImage(url: URL(string: context.attributes.coverUrl)) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Image(systemName: "book.fill").foregroundStyle(.purple)
-                }
-                .frame(width: 16, height: 20)
-                .clipShape(RoundedRectangle(cornerRadius: 2))
+                Image(systemName: "book.fill").foregroundStyle(.purple).font(.caption)
             } compactTrailing: {
                 if context.state.isPaused {
                     Image(systemName: "pause.fill").foregroundStyle(.secondary).font(.caption)

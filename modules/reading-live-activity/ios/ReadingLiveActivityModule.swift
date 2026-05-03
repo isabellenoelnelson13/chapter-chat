@@ -10,11 +10,11 @@ public class ReadingLiveActivityModule: Module {
     public func definition() -> ModuleDefinition {
         Name("ReadingLiveActivity")
 
-        AsyncFunction("startActivity") { (bookTitle: String, author: String, coverUrl: String, startPage: Int, promise: Promise) in
+        AsyncFunction("startActivity") { (bookTitle: String, author: String, startPage: Int, promise: Promise) in
             guard #available(iOS 16.2, *) else { promise.resolve(nil); return }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { promise.resolve(nil); return }
 
-            let attributes = ReadingSessionAttributes(bookTitle: bookTitle, author: author, coverUrl: coverUrl)
+            let attributes = ReadingSessionAttributes(bookTitle: bookTitle, author: author)
             let state = ReadingSessionAttributes.ContentState(
                 startDate: Date(),
                 currentPage: startPage,
