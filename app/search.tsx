@@ -30,6 +30,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -81,6 +82,31 @@ export default function SearchScreen() {
     title: { color: colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
     author: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
     pages: { color: colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
+    emptyState: {
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.xl,
+      gap: Spacing.md,
+    },
+    emptyText: {
+      color: colors.textTertiary,
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+      textAlign: 'center',
+    },
+    addManuallyBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      paddingHorizontal: Spacing.lg,
+      alignItems: 'center',
+      width: '100%',
+    },
+    addManuallyText: {
+      color: colors.surface,
+      fontSize: 15,
+      fontFamily: Fonts.semiBold,
+    },
   }), [colors]);
 
   if (!session) return null;
@@ -91,6 +117,7 @@ export default function SearchScreen() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!text.trim()) {
       setResults([]);
+      setHasSearched(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
@@ -98,6 +125,7 @@ export default function SearchScreen() {
       try {
         const items = await searchBooks(text.trim());
         setResults(items);
+        setHasSearched(true);
       } finally {
         setSearching(false);
       }
@@ -169,6 +197,18 @@ export default function SearchScreen() {
           </TouchableOpacity>
         )}
       />
+
+      {!searching && hasSearched && query.trim() !== '' && results.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No results found</Text>
+          <TouchableOpacity
+            style={styles.addManuallyBtn}
+            onPress={() => router.push(`/add-book?title=${encodeURIComponent(query.trim())}`)}
+          >
+            <Text style={styles.addManuallyText}>+ Add "{query.trim()}" manually</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
