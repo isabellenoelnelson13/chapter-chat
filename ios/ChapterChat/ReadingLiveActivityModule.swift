@@ -19,15 +19,13 @@ struct ReadingSessionAttributes: ActivityAttributes {
 class ReadingLiveActivity: NSObject {
     private var currentActivityBox: Any?
 
-    @objc(startActivity:author:coverUrl:startPage:resolver:rejecter:)
+    @objc(startActivity:author:coverUrl:startPage:)
     func startActivity(_ bookTitle: String,
                        author: String,
                        coverUrl: String,
-                       startPage: NSNumber,
-                       resolver: @escaping RCTPromiseResolveBlock,
-                       rejecter: @escaping RCTPromiseRejectBlock) {
-        guard #available(iOS 16.2, *) else { resolver(nil); return }
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { resolver(nil); return }
+                       startPage: NSNumber) {
+        guard #available(iOS 16.2, *) else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         let attributes = ReadingSessionAttributes(bookTitle: bookTitle, author: author, coverUrl: coverUrl)
         let state = ReadingSessionAttributes.ContentState(
@@ -43,22 +41,17 @@ class ReadingLiveActivity: NSObject {
                 pushType: nil
             )
             currentActivityBox = activity
-            resolver(activity.id)
         } catch {
-            rejecter("LIVE_ACTIVITY_START_FAILED", error.localizedDescription, error)
+            NSLog("[LiveActivity] startActivity failed: %@", error.localizedDescription)
         }
     }
 
-    @objc(updateActivity:currentPage:isPaused:resolver:rejecter:)
+    @objc(updateActivity:currentPage:isPaused:)
     func updateActivity(_ elapsedSeconds: NSNumber,
                         currentPage: NSNumber,
-                        isPaused: Bool,
-                        resolver: @escaping RCTPromiseResolveBlock,
-                        rejecter: @escaping RCTPromiseRejectBlock) {
-        guard #available(iOS 16.2, *) else { resolver(nil); return }
-        guard let activity = currentActivityBox as? Activity<ReadingSessionAttributes> else {
-            resolver(nil); return
-        }
+                        isPaused: Bool) {
+        guard #available(iOS 16.2, *) else { return }
+        guard let activity = currentActivityBox as? Activity<ReadingSessionAttributes> else { return }
         let adjustedStart = Date(timeIntervalSinceNow: -elapsedSeconds.doubleValue)
         let newState = ReadingSessionAttributes.ContentState(
             startDate: adjustedStart,
@@ -68,21 +61,16 @@ class ReadingLiveActivity: NSObject {
         )
         Task {
             await activity.update(using: newState)
-            resolver(nil)
         }
     }
 
-    @objc(endActivity:rejecter:)
-    func endActivity(_ resolver: @escaping RCTPromiseResolveBlock,
-                     rejecter: @escaping RCTPromiseRejectBlock) {
-        guard #available(iOS 16.2, *) else { resolver(nil); return }
-        guard let activity = currentActivityBox as? Activity<ReadingSessionAttributes> else {
-            resolver(nil); return
-        }
+    @objc(endActivity)
+    func endActivity() {
+        guard #available(iOS 16.2, *) else { return }
+        guard let activity = currentActivityBox as? Activity<ReadingSessionAttributes> else { return }
         Task {
             await activity.end(dismissalPolicy: .immediate)
-            currentActivityBox = nil
-            resolver(nil)
+            self.currentActivityBox = nil
         }
     }
 
