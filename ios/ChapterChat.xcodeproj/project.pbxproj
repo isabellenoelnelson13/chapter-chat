@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -11,6 +11,9 @@
 		2CFD49372FA2984A00A7DE2E /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CFD49362FA2984A00A7DE2E /* WidgetKit.framework */; };
 		2CFD49392FA2984A00A7DE2E /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CFD49382FA2984A00A7DE2E /* SwiftUI.framework */; };
 		2CFD49462FA2984C00A7DE2E /* ReadingWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2CFD49352FA2984A00A7DE2E /* ReadingWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2CFD49502FA2984A00A7DE2E /* ReadingWidgetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CFD494D2FA2984A00A7DE2E /* ReadingWidgetLiveActivity.swift */; };
+		2CFD49512FA2984A00A7DE2E /* ReadingSessionAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CFD494E2FA2984A00A7DE2E /* ReadingSessionAttributes.swift */; };
+		2CFD49522FA2984A00A7DE2E /* ReadingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CFD494F2FA2984A00A7DE2E /* ReadingWidget.swift */; };
 		343BC475850BFAFBF0668B2D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F968F43E2BA7B449E1F7BE47 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		8341E2FBDDC69A297EBAF1E6 /* libPods-ChapterChat.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 28E0EAB4486E4F75B791FA05 /* libPods-ChapterChat.a */; };
@@ -54,6 +57,10 @@
 		2CFD49352FA2984A00A7DE2E /* ReadingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ReadingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CFD49362FA2984A00A7DE2E /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		2CFD49382FA2984A00A7DE2E /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		2CFD494C2FA2984A00A7DE2E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = ReadingWidget/Info.plist; sourceTree = "<group>"; };
+		2CFD494D2FA2984A00A7DE2E /* ReadingWidgetLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReadingWidgetLiveActivity.swift; path = ReadingWidget/ReadingWidgetLiveActivity.swift; sourceTree = "<group>"; };
+		2CFD494E2FA2984A00A7DE2E /* ReadingSessionAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReadingSessionAttributes.swift; path = ReadingWidget/ReadingSessionAttributes.swift; sourceTree = "<group>"; };
+		2CFD494F2FA2984A00A7DE2E /* ReadingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReadingWidget.swift; path = ReadingWidget/ReadingWidget.swift; sourceTree = "<group>"; };
 		90CD01659B065917096F864B /* Pods-ChapterChat.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ChapterChat.debug.xcconfig"; path = "Target Support Files/Pods-ChapterChat/Pods-ChapterChat.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = ChapterChat/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB000100AABB000000000001 /* ReadingLiveActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReadingLiveActivityModule.swift; path = ChapterChat/ReadingLiveActivityModule.swift; sourceTree = "<group>"; };
@@ -65,31 +72,6 @@
 		F11748442D0722820044C1D9 /* ChapterChat-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ChapterChat-Bridging-Header.h"; path = "ChapterChat/ChapterChat-Bridging-Header.h"; sourceTree = "<group>"; };
 		F968F43E2BA7B449E1F7BE47 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ChapterChat/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		2CFD49472FA2984C00A7DE2E /* Exceptions for "ReadingWidget" folder in "ReadingWidgetExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 2CFD49342FA2984A00A7DE2E /* ReadingWidgetExtension */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		2CFD493A2FA2984A00A7DE2E /* ReadingWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				2CFD49472FA2984C00A7DE2E /* Exceptions for "ReadingWidget" folder in "ReadingWidgetExtension" target */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = ReadingWidget;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
@@ -143,6 +125,17 @@
 				BB62522928BB17C3183114E1 /* ChapterChat */,
 			);
 			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		2CFD493A2FA2984A00A7DE2E /* ReadingWidget */ = {
+			isa = PBXGroup;
+			children = (
+				2CFD494C2FA2984A00A7DE2E /* Info.plist */,
+				2CFD494E2FA2984A00A7DE2E /* ReadingSessionAttributes.swift */,
+				2CFD494F2FA2984A00A7DE2E /* ReadingWidget.swift */,
+				2CFD494D2FA2984A00A7DE2E /* ReadingWidgetLiveActivity.swift */,
+			);
+			name = ReadingWidget;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
@@ -243,9 +236,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				2CFD493A2FA2984A00A7DE2E /* ReadingWidget */,
 			);
 			name = ReadingWidgetExtension;
 			productName = ReadingWidgetExtension;
@@ -451,6 +441,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2CFD49512FA2984A00A7DE2E /* ReadingSessionAttributes.swift in Sources */,
+				2CFD49522FA2984A00A7DE2E /* ReadingWidget.swift in Sources */,
+				2CFD49502FA2984A00A7DE2E /* ReadingWidgetLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
