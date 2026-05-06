@@ -71,6 +71,7 @@ export default function StarRating({
         return (
           <Pressable
             key={star}
+            testID={`star-${star}`}
             style={{ width: size, height: size }}
             onPress={() => {
               const currentStar = rating > 0 ? Math.ceil(rating) : 0;

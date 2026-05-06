@@ -43,6 +43,8 @@ export default function BookDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [descExpanded, setDescExpanded] = useState(false);
   const [shareConfirmed, setShareConfirmed] = useState(false);
+  const [reviewEditing, setReviewEditing] = useState(false);
+  const [reviewInput, setReviewInput] = useState('');
   const [editingPages, setEditingPages] = useState(false);
   const [pageInput, setPageInput] = useState('');
   const [editingGenres, setEditingGenres] = useState(false);
@@ -64,6 +66,7 @@ export default function BookDetailScreen() {
         .then(([bookData, userBookData]) => {
           setBook(bookData);
           setUserBook(userBookData);
+          setReviewInput(userBookData?.review ?? '');
           setLoading(false);
           // Silently refresh genres from Google Books in the background
           if (bookData) {
@@ -418,7 +421,14 @@ export default function BookDetailScreen() {
 
   const handleRate = async (rating: number) => {
     setUserBook({ ...userBook!, rating });
-    await rateBook(userBook!.id, rating);
+    await rateBook(userBook!.id, rating, userBook!.review ?? undefined);
+  };
+
+  const handleSaveReview = () => {
+    const text = reviewInput.trim() || undefined;
+    setUserBook({ ...userBook!, review: text ?? null });
+    setReviewEditing(false);
+    rateBook(userBook!.id, userBook!.rating ?? 0, text);
   };
 
   const openDatePicker = (field: 'started_at' | 'finished_at') => {
@@ -667,6 +677,35 @@ export default function BookDetailScreen() {
                 </Text>
               )}
             </View>
+          )}
+
+          {shelf === 'read' && (
+            reviewEditing ? (
+              <View style={styles.genreInputRow}>
+                <TextInput
+                  style={[styles.genreInput, { minHeight: 60 }]}
+                  value={reviewInput}
+                  onChangeText={setReviewInput}
+                  placeholder="Write your thoughts..."
+                  placeholderTextColor={colors.textTertiary}
+                  multiline
+                  autoFocus
+                  testID="review-input"
+                />
+                <TouchableOpacity onPress={handleSaveReview} testID="review-save">
+                  <Text style={styles.genreSave}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setReviewEditing(true)}
+                testID={userBook?.review ? 'review-text' : 'review-placeholder'}
+              >
+                <Text style={userBook?.review ? styles.reviewText : styles.pageCountPlaceholder}>
+                  {userBook?.review ?? 'Add a review...'}
+                </Text>
+              </TouchableOpacity>
+            )
           )}
 
           {(shelf === 'reading' || shelf === 'read') && (

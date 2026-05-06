@@ -18,7 +18,7 @@ jest.mock('@/lib/auth', () => ({
 
 jest.mock('@/lib/books', () => ({
   getBookById: jest.fn().mockResolvedValue(null),
-  getBookReviews: jest.fn().mockResolvedValue([]),
+  getBookReviews: jest.fn().mockResolvedValue({ friendReviews: [], topReviews: [] }),
   updatePageCount: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -88,10 +88,15 @@ const mockReadBook = {
   rating: 4,
 };
 
+const mockReadBookWithReview = {
+  ...mockReadBook,
+  review: 'A wonderful adventure.',
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   (getBookById as jest.Mock).mockResolvedValue(null);
-  (getBookReviews as jest.Mock).mockResolvedValue([]);
+  (getBookReviews as jest.Mock).mockResolvedValue({ friendReviews: [], topReviews: [] });
   (getUserBook as jest.Mock).mockResolvedValue(null);
   (createEvent as jest.Mock).mockResolvedValue(undefined);
 });
@@ -160,6 +165,52 @@ describe('BookDetailScreen', () => {
     });
   });
 
+  it('shows review placeholder when book is read and has no review', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue({ ...mockReadBook, review: null });
+    render(<BookDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('review-placeholder')).toBeTruthy();
+    });
+  });
+
+  it('shows existing review text when book has a review', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue(mockReadBookWithReview);
+    render(<BookDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('review-text')).toBeTruthy();
+      expect(screen.getByText('A wonderful adventure.')).toBeTruthy();
+    });
+  });
+
+  it('tapping review placeholder opens text input', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue({ ...mockReadBook, review: null });
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('review-placeholder'));
+    fireEvent.press(screen.getByTestId('review-placeholder'));
+    await waitFor(() => {
+      expect(screen.getByTestId('review-input')).toBeTruthy();
+    });
+  });
+
+  it('tapping Save calls rateBook with review text and collapses input', async () => {
+    (getBookById as jest.Mock).mockResolvedValue(mockBook);
+    (getUserBook as jest.Mock).mockResolvedValue({ ...mockReadBook, review: null });
+    render(<BookDetailScreen />);
+    await waitFor(() => screen.getByTestId('review-placeholder'));
+    fireEvent.press(screen.getByTestId('review-placeholder'));
+    await waitFor(() => screen.getByTestId('review-input'));
+    fireEvent.changeText(screen.getByTestId('review-input'), 'Loved it!');
+    fireEvent.press(screen.getByTestId('review-save'));
+    await waitFor(() => {
+      expect(rateBook).toHaveBeenCalledWith('ub-2', 4, 'Loved it!');
+      expect(screen.queryByTestId('review-input')).toBeNull();
+      expect(screen.getByText('Loved it!')).toBeTruthy();
+    });
+  });
+
   it('tapping a star calls rateBook', async () => {
     (getBookById as jest.Mock).mockResolvedValue(mockBook);
     (getUserBook as jest.Mock).mockResolvedValue({ ...mockReadBook, rating: null });
@@ -167,7 +218,7 @@ describe('BookDetailScreen', () => {
     await waitFor(() => screen.getByTestId('star-3'));
     fireEvent.press(screen.getByTestId('star-3'));
     await waitFor(() => {
-      expect(rateBook).toHaveBeenCalledWith('ub-2', 3);
+      expect(rateBook).toHaveBeenCalledWith('ub-2', 3, undefined);
     });
   });
 
