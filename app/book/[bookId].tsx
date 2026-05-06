@@ -23,6 +23,7 @@ import StarRating from '@/components/StarRating';
 import { getUserBook, addToShelf, moveShelf, removeFromShelf, rateBook, updateReadDates, updateFormat, type UserBookWithBook, type BookFormat } from '@/lib/userBooks';
 import { getBookById, getBookReviews, updatePageCount, updateCoverUrl, updateBookGenres, searchGoogleImages, refreshBookGenres, refreshBookSeries, type BookDetails, type FriendReview, type SeededReview } from '@/lib/books';
 import { createEvent } from '@/lib/activity';
+import { getReadingSessions, type ReadingSession } from '@/lib/sessions';
 import { Shelf } from '@/types/database';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
@@ -51,6 +52,7 @@ export default function BookDetailScreen() {
   const [genreInput, setGenreInput] = useState('');
   const [datePickerField, setDatePickerField] = useState<'started_at' | 'finished_at' | null>(null);
   const [datePickerValue, setDatePickerValue] = useState(new Date());
+  const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([]);
   const [coverSearchVisible, setCoverSearchVisible] = useState(false);
   const [coverQuery, setCoverQuery] = useState('');
   const [coverResults, setCoverResults] = useState<string[]>([]);
@@ -95,6 +97,14 @@ export default function BookDetailScreen() {
       .catch(() => {});
   }, [bookId, userId]);
 
+  // Fetch reading sessions
+  useEffect(() => {
+    if (!bookId || !userId) return;
+    getReadingSessions(userId, bookId)
+      .then(setReadingSessions)
+      .catch(() => {});
+  }, [bookId, userId]);
+
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -127,6 +137,19 @@ export default function BookDetailScreen() {
     seriesLabel: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.primary },
     pageCount: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textTertiary },
     pageCountPlaceholder: { fontSize: 13, fontFamily: Fonts.regular, color: colors.primary },
+    reviewPlaceholderTile: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: Spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      ...Shadow.card,
+    },
+    reviewPlaceholderTileText: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.primary, flex: 1 },
+    reviewPlaceholderTileSubtext: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textTertiary, marginTop: 2 },
     pageInput: {
       fontSize: 13,
       fontFamily: Fonts.regular,
@@ -332,6 +355,23 @@ export default function BookDetailScreen() {
       marginBottom: 8,
       marginTop: 4,
     },
+
+    sessionCard: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 12,
+      marginBottom: Spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    sessionInfo: { flex: 1 },
+    sessionDate: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textPrimary },
+    sessionMeta: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary, marginTop: 2 },
+    sessionDuration: { fontSize: 13, fontFamily: Fonts.medium, color: colors.primary },
   }), [colors]);
 
   if (!session) return null;
@@ -701,9 +741,17 @@ export default function BookDetailScreen() {
                 onPress={() => setReviewEditing(true)}
                 testID={userBook?.review ? 'review-text' : 'review-placeholder'}
               >
-                <Text style={userBook?.review ? styles.reviewText : styles.pageCountPlaceholder}>
-                  {userBook?.review ?? 'Add a review...'}
-                </Text>
+                {userBook?.review ? (
+                  <Text style={styles.reviewText}>{userBook.review}</Text>
+                ) : (
+                  <View style={styles.reviewPlaceholderTile}>
+                    <Ionicons name="pencil-outline" size={18} color={colors.primary} />
+                    <View>
+                      <Text style={styles.reviewPlaceholderTileText}>Add a review...</Text>
+                      <Text style={styles.reviewPlaceholderTileSubtext}>Tap to write your thoughts</Text>
+                    </View>
+                  </View>
+                )}
               </TouchableOpacity>
             )
           )}
@@ -798,6 +846,35 @@ export default function BookDetailScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
+
+        {/* Reading Sessions */}
+        {readingSessions.length > 0 && (
+          <View>
+            <Text style={styles.sectionTitle}>Reading Sessions</Text>
+            {readingSessions.map((s) => {
+              const pagesRead = s.end_page - s.start_page;
+              const mins = Math.round(s.duration_seconds / 60);
+              const durationLabel = s.duration_seconds > 0
+                ? mins < 60
+                  ? `${mins}m`
+                  : `${Math.floor(mins / 60)}h ${mins % 60}m`
+                : null;
+              const date = new Date(s.started_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              return (
+                <View key={s.id} style={styles.sessionCard} testID={`session-${s.id}`}>
+                  <Ionicons name="book-outline" size={18} color={colors.textTertiary} />
+                  <View style={styles.sessionInfo}>
+                    <Text style={styles.sessionDate}>{date}</Text>
+                    <Text style={styles.sessionMeta}>
+                      {pagesRead > 0 ? `pp. ${s.start_page}–${s.end_page} (${pagesRead} pages)` : `Page ${s.end_page}`}
+                    </Text>
+                  </View>
+                  {durationLabel && <Text style={styles.sessionDuration}>{durationLabel}</Text>}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Reviews */}
         {(friendReviews.length > 0 || topReviews.length > 0) && (

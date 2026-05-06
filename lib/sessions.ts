@@ -21,6 +21,18 @@ export async function createQuickLog(params: {
   if (error) throw error;
 }
 
+export type ReadingSession = Database['public']['Tables']['reading_sessions']['Row'];
+
+export async function getReadingSessions(userId: string, bookId: string): Promise<ReadingSession[]> {
+  const { data, error } = await (supabase.from('reading_sessions') as any)
+    .select('*')
+    .eq('user_id', userId)
+    .eq('book_id', bookId)
+    .order('started_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 type SessionInsert = Database['public']['Tables']['reading_sessions']['Insert'];
 
 export async function createSession(params: {

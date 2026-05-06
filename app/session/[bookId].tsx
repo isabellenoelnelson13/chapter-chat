@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getUserBook, updateProgressPercent, type UserBookWithBook } from '@/lib/userBooks';
@@ -45,6 +46,7 @@ export default function SessionScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const { session } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
 
   const [userBook, setUserBook] = useState<UserBookWithBook | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,7 @@ export default function SessionScreen() {
   const [seconds, setSeconds] = useState(0);
   const [saveError, setSaveError] = useState('');
   const [shareToFeed, setShareToFeed] = useState(false);
+  const [trackAsPercent, setTrackAsPercent] = useState(false);
   const successOpacity = useSharedValue(0);
   const successScale = useSharedValue(0.8);
   const successStyle = useAnimatedStyle(() => ({
@@ -62,6 +65,7 @@ export default function SessionScreen() {
   }));
   const startedAtRef = useRef<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const savedRef = useRef(false);
   // Timestamp-based tracking so backgrounding doesn't lose time
   const runStartRef = useRef<number | null>(null);   // Date.now() when last started/resumed
   const accumulatedRef = useRef(0);                  // seconds before current running period
@@ -73,7 +77,7 @@ export default function SessionScreen() {
     setSeconds(accumulatedRef.current + Math.floor((Date.now() - runStartRef.current) / 1000));
   };
 
-  const isPercent = userBook?.format === 'ebook' || userBook?.format === 'audiobook';
+  const isPercent = trackAsPercent;
 
   useEffect(() => {
     getUserBook(userId, bookId)
@@ -81,6 +85,7 @@ export default function SessionScreen() {
         setUserBook(book);
         if (book) {
           const isP = book.format === 'ebook' || book.format === 'audiobook';
+          setTrackAsPercent(isP);
           setStartPage(isP
             ? String(Math.round(book.progress_percent ?? 0))
             : String(book.current_page));
@@ -103,6 +108,23 @@ export default function SessionScreen() {
   useEffect(() => {
     return () => { endReadingActivity(); };
   }, []);
+
+  // Confirm before leaving during an active session
+  useEffect(() => {
+    if (phase !== 'running' && phase !== 'paused') return;
+    return navigation.addListener('beforeRemove', (e: any) => {
+      if (savedRef.current) return;
+      e.preventDefault();
+      Alert.alert(
+        'Discard session?',
+        'You have a session in progress. Are you sure you want to leave?',
+        [
+          { text: 'Keep Reading', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+        ]
+      );
+    });
+  }, [navigation, phase]);
 
   const startTimer = () => {
     accumulatedRef.current = 0;
@@ -208,6 +230,7 @@ export default function SessionScreen() {
         });
       }
       endReadingActivity();
+      savedRef.current = true;
       successOpacity.value = withSequence(
         withTiming(1, { duration: 250 }),
         withTiming(1, { duration: 800 }),
@@ -312,6 +335,21 @@ export default function SessionScreen() {
       borderColor: colors.border,
     },
     shareLabel: { fontSize: 15, fontFamily: Fonts.regular, color: colors.textPrimary },
+
+    trackingToggleRow: { flexDirection: 'row', gap: Spacing.sm },
+    trackingToggleBtn: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    trackingToggleBtnActive: { borderColor: colors.primary, backgroundColor: colors.surface },
+    trackingToggleText: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    trackingToggleTextActive: { color: colors.primary },
+    pageEquivHint: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textTertiary, textAlign: 'right' },
   }), [colors]);
 
   if (loading) {
@@ -344,6 +382,25 @@ export default function SessionScreen() {
 
       {phase === 'setup' && (
         <View style={styles.controls}>
+          <View style={styles.trackingToggleRow}>
+            {(['Pages', '%'] as const).map((label) => {
+              const active = label === '%' ? trackAsPercent : !trackAsPercent;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  style={[styles.trackingToggleBtn, active && styles.trackingToggleBtnActive]}
+                  onPress={() => {
+                    setTrackAsPercent(label === '%');
+                    setStartPage('');
+                  }}
+                >
+                  <Text style={[styles.trackingToggleText, active && styles.trackingToggleTextActive]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           <TextInput
             style={styles.input}
             placeholder={isPercent ? 'Start % (0–100)' : 'Starting page'}
@@ -395,6 +452,21 @@ export default function SessionScreen() {
             returnKeyType="done"
             onSubmitEditing={Keyboard.dismiss}
           />
+          {isPercent && (() => {
+            const sp = parseFloat(startPage);
+            const ep = parseFloat(endPage);
+            const pageCount = userBook?.book.page_count ?? 300;
+            if (!isNaN(sp) && !isNaN(ep) && ep > sp) {
+              const startEquiv = Math.round(sp / 100 * pageCount);
+              const endEquiv = Math.round(ep / 100 * pageCount);
+              return (
+                <Text style={styles.pageEquivHint}>
+                  ≈ {endEquiv - startEquiv} pages (pp. {startEquiv}–{endEquiv})
+                </Text>
+              );
+            }
+            return null;
+          })()}
           {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
           <View style={styles.shareRow}>
             <Text style={styles.shareLabel}>Share to feed</Text>
