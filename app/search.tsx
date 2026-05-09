@@ -8,20 +8,14 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
-  ActionSheetIOS,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth';
 import { searchBooks, upsertBook, type BookSearchResult } from '@/lib/books';
-import { addToShelf } from '@/lib/userBooks';
-import { Shelf } from '@/types/database';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
-
-const SHELF_OPTIONS = ['Cancel', 'Reading', 'Want to Read', 'Read', 'Did Not Finish'] as const;
-const SHELF_KEYS: (Shelf | null)[] = [null, 'reading', 'want', 'read', 'dnf'];
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -31,6 +25,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [loadingBookId, setLoadingBookId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -132,29 +127,16 @@ export default function SearchScreen() {
     }, 400);
   };
 
-  const addBook = async (book: BookSearchResult, shelf: Shelf) => {
+  const handleBookPress = async (book: BookSearchResult) => {
+    setLoadingBookId(book.hardcover_id);
     try {
       const bookId = await upsertBook(book);
-      await addToShelf(userId, bookId, shelf);
-      router.back();
+      router.push(`/book/${bookId}`);
     } catch {
-      Alert.alert('Error', 'Could not add book. Please try again.');
+      Alert.alert('Error', 'Could not load book. Please try again.');
+    } finally {
+      setLoadingBookId(null);
     }
-  };
-
-  const showShelfPicker = (book: BookSearchResult) => {
-    // ActionSheetIOS is iOS-only — this app targets iOS exclusively
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: [...SHELF_OPTIONS],
-        cancelButtonIndex: 0,
-        title: `Add "${book.title}" to...`,
-      },
-      (buttonIndex) => {
-        const shelf = SHELF_KEYS[buttonIndex];
-        if (shelf) addBook(book, shelf);
-      }
-    );
   };
 
   return (
@@ -181,7 +163,11 @@ export default function SearchScreen() {
         keyExtractor={(item) => item.hardcover_id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.result} onPress={() => showShelfPicker(item)}>
+          <TouchableOpacity
+            style={styles.result}
+            onPress={() => handleBookPress(item)}
+            disabled={loadingBookId !== null}
+          >
             {item.cover_url ? (
               <Image source={{ uri: item.cover_url }} style={styles.cover} />
             ) : (
@@ -194,6 +180,9 @@ export default function SearchScreen() {
                 <Text style={styles.pages}>{item.page_count} pages</Text>
               )}
             </View>
+            {loadingBookId === item.hardcover_id && (
+              <ActivityIndicator color={colors.primary} />
+            )}
           </TouchableOpacity>
         )}
       />

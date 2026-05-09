@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
@@ -150,11 +151,15 @@ export default function UserProfileScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.initial}>
-              {profile?.username.charAt(0).toUpperCase() ?? '?'}
-            </Text>
-          </View>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.initial}>
+                {profile?.username.charAt(0).toUpperCase() ?? '?'}
+              </Text>
+            </View>
+          )}
           <Text style={styles.username}>{profile?.username ?? ''}</Text>
           {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>

@@ -10,6 +10,7 @@ export interface ActivityEvent {
   id: string;
   actorId: string;
   actorUsername: string;
+  actorAvatarUrl: string | null;
   eventType: EventType;
   bookId: string;
   bookTitle: string;
@@ -25,6 +26,7 @@ export interface ActivityComment {
   id: string;
   userId: string;
   username: string;
+  avatarUrl: string | null;
   body: string;
   createdAt: string;
 }
@@ -44,7 +46,7 @@ export async function getFeed(userId: string): Promise<ActivityEvent[]> {
     .from('activity_events')
     .select(
       `id, event_type, book_id, metadata, created_at,
-       actor:profiles!actor_id(id, username),
+       actor:profiles!actor_id(id, username, avatar_url),
        book:books!book_id(id, title, cover_url),
        likes:activity_likes(count),
        comments:activity_comments(count)`
@@ -71,6 +73,7 @@ export async function getFeed(userId: string): Promise<ActivityEvent[]> {
     id: e.id,
     actorId: e.actor.id,
     actorUsername: e.actor.username,
+    actorAvatarUrl: e.actor.avatar_url ?? null,
     eventType: e.event_type as EventType,
     bookId: e.book_id,
     bookTitle: e.book.title,
@@ -95,7 +98,7 @@ export async function getFriendsFeed(userId: string, limit = 5): Promise<Activit
     .from('activity_events')
     .select(
       `id, event_type, book_id, metadata, created_at,
-       actor:profiles!actor_id(id, username),
+       actor:profiles!actor_id(id, username, avatar_url),
        book:books!book_id(id, title, cover_url)`
     )
     .in('actor_id', followingIds)
@@ -107,6 +110,7 @@ export async function getFriendsFeed(userId: string, limit = 5): Promise<Activit
     id: e.id,
     actorId: e.actor.id,
     actorUsername: e.actor.username,
+    actorAvatarUrl: e.actor.avatar_url ?? null,
     eventType: e.event_type as EventType,
     bookId: e.book_id,
     bookTitle: e.book.title,
@@ -129,7 +133,7 @@ export async function getEventById(eventId: string, userId: string): Promise<Act
     .from('activity_events')
     .select(
       `id, event_type, book_id, metadata, created_at,
-       actor:profiles!actor_id(id, username),
+       actor:profiles!actor_id(id, username, avatar_url),
        book:books!book_id(id, title, cover_url),
        likes:activity_likes(count),
        comments:activity_comments(count)`
@@ -151,6 +155,7 @@ export async function getEventById(eventId: string, userId: string): Promise<Act
     id: e.id,
     actorId: e.actor.id,
     actorUsername: e.actor.username,
+    actorAvatarUrl: e.actor.avatar_url ?? null,
     eventType: e.event_type as EventType,
     bookId: e.book_id,
     bookTitle: e.book.title,
@@ -206,7 +211,7 @@ export async function unlikeEvent(userId: string, eventId: string): Promise<void
 export async function getComments(eventId: string): Promise<ActivityComment[]> {
   const { data, error } = await supabase
     .from('activity_comments')
-    .select('id, user_id, body, created_at, user:profiles!user_id(username)')
+    .select('id, user_id, body, created_at, user:profiles!user_id(username, avatar_url)')
     .eq('event_id', eventId)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -214,6 +219,7 @@ export async function getComments(eventId: string): Promise<ActivityComment[]> {
     id: r.id,
     userId: r.user_id,
     username: r.user.username,
+    avatarUrl: r.user.avatar_url ?? null,
     body: r.body,
     createdAt: r.created_at,
   }));
@@ -227,13 +233,14 @@ export async function addComment(
   const { data, error } = await supabase
     .from('activity_comments')
     .insert({ event_id: eventId, user_id: userId, body })
-    .select('id, user_id, body, created_at, user:profiles!user_id(username)')
+    .select('id, user_id, body, created_at, user:profiles!user_id(username, avatar_url)')
     .single();
   if (error) throw error;
   return {
     id: data.id,
     userId: data.user_id,
     username: data.user.username,
+    avatarUrl: data.user.avatar_url ?? null,
     body: data.body,
     createdAt: data.created_at,
   };

@@ -244,6 +244,38 @@ export async function getRatingStats(userId: string): Promise<RatingStats> {
   return { average, distribution, totalRated: ratings.length };
 }
 
+export interface CalendarDay {
+  date: string;       // YYYY-MM-DD
+  pages: number;
+  coverUrl: string | null;
+}
+
+export async function getReadingCalendar(userId: string, year: number, month: number): Promise<CalendarDay[]> {
+  const start = new Date(Date.UTC(year, month - 1, 1)).toISOString();
+  const end   = new Date(Date.UTC(year, month, 1)).toISOString();
+
+  const { data, error } = await supabase
+    .from('reading_sessions')
+    .select('start_page, end_page, started_at, book:books!book_id(cover_url)')
+    .eq('user_id', userId)
+    .gte('started_at', start)
+    .lt('started_at', end)
+    .order('started_at', { ascending: true });
+  if (error) throw error;
+
+  const map: Record<string, { pages: number; coverUrl: string | null }> = {};
+  for (const s of data ?? []) {
+    const date = s.started_at.slice(0, 10);
+    const pages = (s.end_page ?? 0) - (s.start_page ?? 0);
+    const cover = (s.book as any)?.cover_url ?? null;
+    if (!map[date]) map[date] = { pages: 0, coverUrl: null };
+    map[date].pages += pages;
+    if (!map[date].coverUrl && cover) map[date].coverUrl = cover;
+  }
+
+  return Object.entries(map).map(([date, { pages, coverUrl }]) => ({ date, pages, coverUrl }));
+}
+
 export async function getWeeklyPace(userId: string): Promise<number> {
   const history = await getReadingHistory(userId, 7);
   const total = history.reduce((sum, d) => sum + d.pages, 0);

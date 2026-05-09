@@ -110,8 +110,15 @@ const WEEKLY_ID = 'weekly-summary';
 export async function scheduleReadingReminder(
   hour: number,
   minute: number,
+  hasReadToday: boolean,
 ): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(REMINDER_ID).catch(() => {});
+  if (hasReadToday) return;
+
+  const target = new Date();
+  target.setHours(hour, minute, 0, 0);
+  if (target <= new Date()) return; // already past the reminder time today
+
   await Notifications.scheduleNotificationAsync({
     identifier: REMINDER_ID,
     content: {
@@ -120,9 +127,8 @@ export async function scheduleReadingReminder(
       sound: true,
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: target,
     },
   });
 }

@@ -18,7 +18,7 @@ import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { getTodayStats, estimateDaysRemaining, type TodayStats } from '@/lib/stats';
 import { getFriendsFeed, type ActivityEvent } from '@/lib/activity';
 import { getProfile } from '@/lib/profile';
-import { scheduleStreakProtection, getNotificationPreferences, getUnreadCount } from '@/lib/notifications';
+import { scheduleReadingReminder, scheduleStreakProtection, getNotificationPreferences, getUnreadCount } from '@/lib/notifications';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
@@ -88,10 +88,14 @@ export default function HomeScreen() {
           setAvatarUrl(profile?.avatar_url ?? null);
           getUnreadCount(userId).then(setUnreadCount);
           setLoading(false);
-          // Schedule streak protection based on today's reading activity
+          // Schedule today's notifications based on reading activity
           getNotificationPreferences(userId).then((prefs) => {
+            const hasReadToday = todayStats.pagesRead > 0;
+            if (prefs.readingReminderEnabled) {
+              scheduleReadingReminder(prefs.readingReminderHour, prefs.readingReminderMinute, hasReadToday);
+            }
             if (prefs.streakProtectionEnabled) {
-              scheduleStreakProtection(todayStats.pagesRead > 0);
+              scheduleStreakProtection(hasReadToday);
             }
           });
         })
@@ -341,7 +345,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>

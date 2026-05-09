@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Image,
   ActivityIndicator,
   Dimensions,
   TouchableOpacity,
@@ -23,20 +24,24 @@ import {
   getYearlyReadingStats,
   getReadingByDayOfWeek,
   getRatingStats,
+  getReadingCalendar,
   type DailyReading,
   type MonthlyBooks,
   type GenreCount,
   type YearlyGoalProgress,
   type YearlyReadingStats,
   type RatingStats,
+  type CalendarDay,
 } from '@/lib/stats';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - 2 * Spacing.lg - 2 * Spacing.md;
+const CELL_SIZE = Math.floor(CHART_WIDTH / 7);
 const PIE_COLORS = ['#7C6FCD', '#A599E9', '#5B4FB0', '#C4BCF0', '#3D3580', '#E8E4FA'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function formatTooltipDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00Z');
@@ -50,13 +55,20 @@ export default function StatsScreen() {
   const { session } = useAuth();
   const userId = session?.user.id ?? '';
 
-  const barColor = colors.textTertiary;
-  const barColorSelected = colors.primary;
-
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('week');
   const [chartKey, setChartKey] = useState(0);
   const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
+  const [selectedDowIndex, setSelectedDowIndex] = useState<number | null>(null);
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number | null>(null);
+  const [selectedRatingIndex, setSelectedRatingIndex] = useState<number | null>(null);
+  const [selectedGenreIndex, setSelectedGenreIndex] = useState<number | null>(null);
+
+  const now = new Date();
+  const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1);
+  const [calendarYear] = useState(now.getFullYear());
+  const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
+  const monthScrollRef = useRef<ScrollView>(null);
 
   const [streak, setStreak] = useState(0);
   const [pace, setPace] = useState(0);
@@ -106,6 +118,35 @@ export default function StatsScreen() {
     setChartKey(k => k + 1);
     setSelectedBarIndex(null);
   }, [period]);
+
+  // Reload calendar when month changes
+  useEffect(() => {
+    if (!userId) return;
+    getReadingCalendar(userId, calendarYear, calendarMonth)
+      .then(setCalendarData)
+      .catch(() => setCalendarData([]));
+  }, [userId, calendarYear, calendarMonth]);
+
+  const calendarCells = useMemo(() => {
+    const firstDow = new Date(calendarYear, calendarMonth - 1, 1).getDay();
+    const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+    const daysInPrev  = new Date(calendarYear, calendarMonth - 1, 0).getDate();
+    const totalCells  = Math.ceil((firstDow + daysInMonth) / 7) * 7;
+    const readMap = new Map(calendarData.map(d => [d.date, d]));
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    return Array.from({ length: totalCells }, (_, i) => {
+      if (i < firstDow) {
+        return { day: daysInPrev - firstDow + 1 + i, current: false, date: '', reading: null, isToday: false };
+      } else if (i < firstDow + daysInMonth) {
+        const day = i - firstDow + 1;
+        const date = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return { day, current: true, date, reading: readMap.get(date) ?? null, isToday: date === todayStr };
+      } else {
+        return { day: i - firstDow - daysInMonth + 1, current: false, date: '', reading: null, isToday: false };
+      }
+    });
+  }, [calendarYear, calendarMonth, calendarData]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -211,6 +252,49 @@ export default function StatsScreen() {
     ratingAvgValue: { fontSize: 28, fontFamily: Fonts.bold, color: colors.textPrimary },
     ratingAvgSub: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
 
+    // Calendar
+    calMonthStrip: { marginBottom: Spacing.md },
+    calMonthStripContent: { gap: 8, paddingHorizontal: 2 },
+    calMonthBtn: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: Radius.xl,
+      backgroundColor: colors.background,
+    },
+    calMonthBtnActive: { backgroundColor: colors.primary },
+    calMonthText: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    calMonthTextActive: { color: colors.surface },
+    calDayHeaders: { flexDirection: 'row', marginBottom: 4 },
+    calDayHeader: { width: CELL_SIZE, textAlign: 'center', fontSize: 11, fontFamily: Fonts.semiBold, color: colors.textTertiary },
+    calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    calCell: {
+      width: CELL_SIZE,
+      height: CELL_SIZE,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.border,
+      overflow: 'hidden',
+      marginBottom: 2,
+    },
+    calCellOther: { backgroundColor: 'transparent' },
+    calCellActive: { backgroundColor: colors.primary },
+    calCellToday: { borderWidth: 2, borderColor: colors.primary },
+    calCover: { ...StyleSheet.absoluteFillObject as any },
+    calDayNum: {
+      position: 'absolute',
+      top: 3,
+      left: 5,
+      fontSize: 10,
+      fontFamily: Fonts.semiBold,
+      color: colors.textPrimary,
+      zIndex: 1,
+    },
+    calDayNumActive: { color: '#FFFFFF' },
+    calDayNumOther: { color: colors.textTertiary },
+    calLegend: { flexDirection: 'row', gap: Spacing.lg, marginTop: Spacing.md },
+    calLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    calLegendDot: { width: 14, height: 14, borderRadius: 4 },
+    calLegendText: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary },
+
     pieRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     legend: { flex: 1, gap: 8 },
     legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -233,13 +317,13 @@ export default function StatsScreen() {
   const weekBarData = weekHistory.map((d, i) => ({
     value: d.pages,
     label: DAY_LABELS[new Date(d.date + 'T00:00:00Z').getUTCDay()],
-    frontColor: i === selectedBarIndex ? barColorSelected : barColor,
+    frontColor: selectedBarIndex !== null && i !== selectedBarIndex ? colors.primary + '55' : colors.primary,
   }));
 
   const monthBarData = monthHistory.map((d, i) => ({
     value: d.pages,
     label: '',
-    frontColor: i === selectedBarIndex ? barColorSelected : barColor,
+    frontColor: selectedBarIndex !== null && i !== selectedBarIndex ? colors.primary + '55' : colors.primary,
   }));
 
   const monthDateRange = monthHistory.length > 0
@@ -258,10 +342,10 @@ export default function StatsScreen() {
   const barSpacing = period === 'week' ? weekSpacing : monthSpacing;
 
   // Monthly books bar chart
-  const booksBarData = monthly.map(m => ({
+  const booksBarData = monthly.map((m, i) => ({
     value: m.count,
     label: m.month,
-    frontColor: colors.primary,
+    frontColor: selectedMonthIndex !== null && i !== selectedMonthIndex ? colors.primary + '55' : colors.primary,
   }));
   const hasBarData = monthly.some(m => m.count > 0);
 
@@ -269,15 +353,15 @@ export default function StatsScreen() {
   const dowBarData = dayOfWeek.map((d, i) => ({
     value: d.pages,
     label: d.day,
-    frontColor: i === new Date().getDay() ? barColorSelected : barColor,
+    frontColor: selectedDowIndex !== null && i !== selectedDowIndex ? colors.primary + '55' : colors.primary,
   }));
   const hasDowData = dayOfWeek.some(d => d.pages > 0);
 
   // Rating bar chart
-  const ratingBarData = ratingStats.distribution.map(({ stars, count }) => ({
+  const ratingBarData = ratingStats.distribution.map(({ stars, count }, i) => ({
     value: count,
     label: `${stars}★`,
-    frontColor: stars >= 4 ? colors.primary : barColor,
+    frontColor: selectedRatingIndex !== null && i !== selectedRatingIndex ? colors.primary + '55' : colors.primary,
   }));
   const hasRatingData = ratingStats.totalRated > 0;
   const ratingBarWidth = Math.floor((CHART_WIDTH - 40) / 5 * 0.5);
@@ -288,6 +372,8 @@ export default function StatsScreen() {
   const pieData = topGenres.map((g, i) => ({
     value: g.count,
     color: PIE_COLORS[i],
+    focused: i === selectedGenreIndex,
+    onPress: () => setSelectedGenreIndex(prev => prev === i ? null : i),
   }));
   const hasPieData = topGenres.length > 0;
 
@@ -296,7 +382,7 @@ export default function StatsScreen() {
     : 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Stats</Text>
 
@@ -355,6 +441,86 @@ export default function StatsScreen() {
               </View>
             </>
           )}
+        </View>
+
+        {/* Reading calendar */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Reading Calendar</Text>
+
+          {/* Month selector */}
+          <ScrollView
+            ref={monthScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.calMonthStrip}
+            contentContainerStyle={styles.calMonthStripContent}
+          >
+            {MONTH_NAMES.map((name, i) => {
+              const m = i + 1;
+              const active = m === calendarMonth;
+              return (
+                <TouchableOpacity
+                  key={name}
+                  style={[styles.calMonthBtn, active && styles.calMonthBtnActive]}
+                  onPress={() => setCalendarMonth(m)}
+                >
+                  <Text style={[styles.calMonthText, active && styles.calMonthTextActive]}>{name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Day-of-week headers */}
+          <View style={styles.calDayHeaders}>
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <Text key={i} style={styles.calDayHeader}>{d}</Text>
+            ))}
+          </View>
+
+          {/* Day grid */}
+          <View style={styles.calGrid}>
+            {calendarCells.map((cell, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.calCell,
+                  !cell.current && styles.calCellOther,
+                  cell.current && cell.reading && styles.calCellActive,
+                  cell.isToday && !cell.reading && styles.calCellToday,
+                ]}
+              >
+                {cell.reading?.coverUrl ? (
+                  <Image
+                    source={{ uri: cell.reading.coverUrl }}
+                    style={styles.calCover}
+                    resizeMode="cover"
+                  />
+                ) : null}
+                {cell.current ? (
+                  <Text style={[
+                    styles.calDayNum,
+                    cell.reading && styles.calDayNumActive,
+                  ]}>
+                    {cell.day}
+                  </Text>
+                ) : (
+                  <Text style={[styles.calDayNum, styles.calDayNumOther]}>{cell.day}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {/* Legend */}
+          <View style={styles.calLegend}>
+            <View style={styles.calLegendItem}>
+              <View style={[styles.calLegendDot, { backgroundColor: colors.primary }]} />
+              <Text style={styles.calLegendText}>Days read</Text>
+            </View>
+            <View style={styles.calLegendItem}>
+              <View style={[styles.calLegendDot, { backgroundColor: colors.border }]} />
+              <Text style={styles.calLegendText}>No reading</Text>
+            </View>
+          </View>
         </View>
 
         {/* Pages chart with week/month toggle */}
@@ -418,7 +584,7 @@ export default function StatsScreen() {
                   animationDuration={700}
                   noOfSections={4}
                   maxValue={Math.ceil(maxPages / 4) * 4 + 4}
-                  rulesType="dashed"
+                  rulesType="solid"
                   rulesColor={colors.border}
                   xAxisThickness={0}
                   yAxisThickness={0}
@@ -445,27 +611,43 @@ export default function StatsScreen() {
           {!hasDowData ? (
             <Text style={styles.emptyText}>Log sessions to see your reading patterns</Text>
           ) : (
-            <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
-              <BarChart
-                key={`dow-${chartKey}`}
-                data={dowBarData}
-                width={CHART_WIDTH}
-                height={160}
-                barWidth={weekBarWidth}
-                spacing={weekSpacing}
-                roundedTop
-                isAnimated
-                animationDuration={700}
-                noOfSections={3}
-                rulesType="dashed"
-                rulesColor={colors.border}
-                xAxisThickness={0}
-                yAxisThickness={0}
-                yAxisTextStyle={styles.axisLabel}
-                xAxisLabelTextStyle={styles.axisLabel}
-                disableScroll
-              />
-            </View>
+            <>
+              <View style={styles.tooltipRow}>
+                {selectedDowIndex !== null ? (
+                  <View style={styles.tooltip}>
+                    <Text style={styles.tooltipDate}>{dayOfWeek[selectedDowIndex].day}</Text>
+                    <View style={styles.tooltipDivider} />
+                    <Text style={styles.tooltipPages}>{dayOfWeek[selectedDowIndex].pages} avg pages</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.tooltipHint}>Tap a bar for details</Text>
+                )}
+              </View>
+              <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
+                <BarChart
+                  key={`dow-${chartKey}`}
+                  data={dowBarData}
+                  width={CHART_WIDTH}
+                  height={160}
+                  barWidth={weekBarWidth}
+                  spacing={weekSpacing}
+                  roundedTop
+                  isAnimated
+                  animationDuration={700}
+                  noOfSections={3}
+                  rulesType="solid"
+                  rulesColor={colors.border}
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  yAxisTextStyle={styles.axisLabel}
+                  xAxisLabelTextStyle={styles.axisLabel}
+                  disableScroll
+                  onPress={(_item: any, index: number) =>
+                    setSelectedDowIndex(prev => prev === index ? null : index)
+                  }
+                />
+              </View>
+            </>
           )}
         </View>
 
@@ -475,27 +657,45 @@ export default function StatsScreen() {
           {!hasBarData ? (
             <Text style={styles.emptyText}>No books finished yet this year</Text>
           ) : (
-            <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
-              <BarChart
-                key={`books-${chartKey}`}
-                data={booksBarData}
-                width={CHART_WIDTH}
-                height={160}
-                barWidth={18}
-                spacing={Math.floor((CHART_WIDTH - 40) / 12 - 18)}
-                roundedTop
-                isAnimated
-                animationDuration={700}
-                noOfSections={3}
-                rulesType="dashed"
-                rulesColor={colors.border}
-                xAxisThickness={0}
-                yAxisThickness={0}
-                yAxisTextStyle={styles.axisLabel}
-                xAxisLabelTextStyle={styles.axisLabel}
-                disableScroll
-              />
-            </View>
+            <>
+              <View style={styles.tooltipRow}>
+                {selectedMonthIndex !== null ? (
+                  <View style={styles.tooltip}>
+                    <Text style={styles.tooltipDate}>{monthly[selectedMonthIndex].month}</Text>
+                    <View style={styles.tooltipDivider} />
+                    <Text style={styles.tooltipPages}>
+                      {monthly[selectedMonthIndex].count} {monthly[selectedMonthIndex].count === 1 ? 'book' : 'books'}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.tooltipHint}>Tap a bar for details</Text>
+                )}
+              </View>
+              <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
+                <BarChart
+                  key={`books-${chartKey}`}
+                  data={booksBarData}
+                  width={CHART_WIDTH}
+                  height={160}
+                  barWidth={18}
+                  spacing={Math.floor((CHART_WIDTH - 40) / 12 - 18)}
+                  roundedTop
+                  isAnimated
+                  animationDuration={700}
+                  noOfSections={3}
+                  rulesType="solid"
+                  rulesColor={colors.border}
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  yAxisTextStyle={styles.axisLabel}
+                  xAxisLabelTextStyle={styles.axisLabel}
+                  disableScroll
+                  onPress={(_item: any, index: number) =>
+                    setSelectedMonthIndex(prev => prev === index ? null : index)
+                  }
+                />
+              </View>
+            </>
           )}
         </View>
 
@@ -511,6 +711,21 @@ export default function StatsScreen() {
                 <Text style={styles.ratingAvgValue}>{ratingStats.average}</Text>
                 <Text style={styles.ratingAvgSub}>avg · {ratingStats.totalRated} {ratingStats.totalRated === 1 ? 'book' : 'books'} rated</Text>
               </View>
+              <View style={styles.tooltipRow}>
+                {selectedRatingIndex !== null ? (
+                  <View style={styles.tooltip}>
+                    <Text style={styles.tooltipDate}>
+                      {'★'.repeat(ratingStats.distribution[selectedRatingIndex].stars)} {ratingStats.distribution[selectedRatingIndex].stars} star
+                    </Text>
+                    <View style={styles.tooltipDivider} />
+                    <Text style={styles.tooltipPages}>
+                      {ratingStats.distribution[selectedRatingIndex].count} {ratingStats.distribution[selectedRatingIndex].count === 1 ? 'book' : 'books'}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.tooltipHint}>Tap a bar for details</Text>
+                )}
+              </View>
               <View style={{ overflow: 'hidden', width: CHART_WIDTH }}>
                 <BarChart
                   key={`rating-${chartKey}`}
@@ -523,13 +738,16 @@ export default function StatsScreen() {
                   isAnimated
                   animationDuration={700}
                   noOfSections={3}
-                  rulesType="dashed"
+                  rulesType="solid"
                   rulesColor={colors.border}
                   xAxisThickness={0}
                   yAxisThickness={0}
                   yAxisTextStyle={styles.axisLabel}
                   xAxisLabelTextStyle={styles.axisLabel}
                   disableScroll
+                  onPress={(_item: any, index: number) =>
+                    setSelectedRatingIndex(prev => prev === index ? null : index)
+                  }
                 />
               </View>
             </>
@@ -551,6 +769,25 @@ export default function StatsScreen() {
                 innerRadius={52}
                 isAnimated
                 animationDuration={700}
+                focusOnPress
+                centerLabelComponent={() => {
+                  if (selectedGenreIndex === null) return (
+                    <Text style={{ fontSize: 10, color: colors.textTertiary, textAlign: 'center', fontFamily: Fonts.regular }}>
+                      {'tap to\nexplore'}
+                    </Text>
+                  );
+                  const g = topGenres[selectedGenreIndex];
+                  return (
+                    <View style={{ alignItems: 'center', paddingHorizontal: 6 }}>
+                      <Text style={{ fontSize: 20, fontFamily: Fonts.bold, color: PIE_COLORS[selectedGenreIndex] }}>
+                        {g.count}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontFamily: Fonts.regular, color: colors.textSecondary, textAlign: 'center' }} numberOfLines={2}>
+                        {g.genre}
+                      </Text>
+                    </View>
+                  );
+                }}
               />
               <View style={styles.legend}>
                 {topGenres.map((g, i) => (

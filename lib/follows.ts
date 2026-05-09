@@ -5,6 +5,7 @@ export interface UserSearchResult {
   username: string;
   bio: string | null;
   is_private: boolean;
+  avatar_url: string | null;
   followStatus: 'following' | 'requested' | 'none';
 }
 
@@ -69,7 +70,7 @@ export async function searchUsers(
 ): Promise<UserSearchResult[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, bio, is_private')
+    .select('id, username, bio, is_private, avatar_url')
     .ilike('username', `${query}%`)
     .neq('id', currentUserId)
     .limit(20);
@@ -81,6 +82,7 @@ export async function searchUsers(
       username: profile.username,
       bio: profile.bio,
       is_private: profile.is_private,
+      avatar_url: profile.avatar_url ?? null,
       followStatus: await getFollowStatus(currentUserId, profile.id),
     }))
   );
@@ -132,11 +134,12 @@ export async function cancelFollowRequest(
 export async function getFollowing(userId: string): Promise<UserSearchResult[]> {
   const { data, error } = await supabase
     .from('follows')
-    .select('profile:profiles!following_id(id, username, bio, is_private)')
+    .select('profile:profiles!following_id(id, username, bio, is_private, avatar_url)')
     .eq('follower_id', userId);
   if (error) throw error;
   return (data ?? []).map((row: any) => ({
     ...row.profile,
+    avatar_url: row.profile.avatar_url ?? null,
     followStatus: 'following' as const,
   }));
 }

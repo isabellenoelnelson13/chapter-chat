@@ -292,6 +292,15 @@ export async function addPost(
   };
 }
 
+export async function deleteClub(clubId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('book_clubs')
+    .delete()
+    .eq('id', clubId)
+    .eq('owner_id', userId);
+  if (error) throw error;
+}
+
 export async function deletePost(postId: string, userId: string): Promise<void> {
   const { error } = await supabase
     .from('club_posts')

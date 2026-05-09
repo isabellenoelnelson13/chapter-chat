@@ -2,19 +2,17 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import {
-  Quicksand_400Regular,
-  Quicksand_500Medium,
-  Quicksand_600SemiBold,
-  Quicksand_700Bold,
-} from '@expo-google-fonts/quicksand';
+  PlayfairDisplay_700Bold,
+} from '@expo-google-fonts/playfair-display';
 import {
-  Lora_400Regular,
-  Lora_600SemiBold,
-} from '@expo-google-fonts/lora';
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+} from '@expo-google-fonts/manrope';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { ThemeProvider } from '../lib/theme';
-import { registerPushToken, getNotificationPreferences, scheduleReadingReminder, scheduleWeeklySummary } from '../lib/notifications';
+import { registerPushToken, getNotificationPreferences, scheduleWeeklySummary } from '../lib/notifications';
 
 // Show notifications when app is in foreground
 Notifications.setNotificationHandler({
@@ -53,9 +51,6 @@ function RootLayoutNav() {
     registerPushToken(userId);
 
     getNotificationPreferences(userId).then((prefs) => {
-      if (prefs.readingReminderEnabled) {
-        scheduleReadingReminder(prefs.readingReminderHour, prefs.readingReminderMinute);
-      }
       if (prefs.weeklySummaryEnabled) {
         scheduleWeeklySummary();
       }
@@ -88,7 +83,6 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="session/[bookId]" />
       <Stack.Screen name="session/manual" />
@@ -104,12 +98,10 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Quicksand_400Regular,
-    Quicksand_500Medium,
-    Quicksand_600SemiBold,
-    Quicksand_700Bold,
-    Lora_400Regular,
-    Lora_600SemiBold,
+    PlayfairDisplay_700Bold,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
   });
 
   if (!fontsLoaded) return null;

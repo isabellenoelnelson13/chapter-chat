@@ -134,7 +134,7 @@ export default function ClubsScreen() {
   if (!session) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>My Clubs</Text>
         <TouchableOpacity

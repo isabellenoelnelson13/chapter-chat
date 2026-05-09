@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -33,6 +34,8 @@ export default function LibraryScreen() {
   const [activeShelf, setActiveShelf] = useState<Shelf>('reading');
   const [books, setBooks] = useState<UserBookWithBook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<'recent' | 'alpha'>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const userId = session?.user.id ?? '';
 
@@ -46,6 +49,23 @@ export default function LibraryScreen() {
         .finally(() => setLoading(false));
     }, [userId, activeShelf])
   );
+
+  const sortedBooks = useMemo(() => {
+    if (sortOrder === 'alpha') {
+      return [...books].sort((a, b) => a.book.title.localeCompare(b.book.title));
+    }
+    return books;
+  }, [books, sortOrder]);
+
+  const filteredBooks = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return sortedBooks;
+    return sortedBooks.filter(
+      (b) =>
+        b.book.title.toLowerCase().includes(q) ||
+        b.book.author.toLowerCase().includes(q)
+    );
+  }, [sortedBooks, searchQuery]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -89,6 +109,43 @@ export default function LibraryScreen() {
     tabText: { color: colors.textSecondary, fontSize: 12, fontFamily: Fonts.semiBold },
     activeTabText: { color: colors.textPrimary, fontFamily: Fonts.bold },
 
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 9,
+      gap: Spacing.sm,
+      ...Shadow.card,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+      color: colors.textPrimary,
+      padding: 0,
+    },
+
+    sortRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingBottom: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    sortLabel: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
+    sortBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+    },
+    sortBtnActive: { backgroundColor: colors.primary },
+    sortBtnText: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    sortBtnTextActive: { color: colors.surface },
+
     list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { color: colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
@@ -97,7 +154,7 @@ export default function LibraryScreen() {
   if (!session) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Library</Text>
@@ -112,7 +169,7 @@ export default function LibraryScreen() {
           <TouchableOpacity
             key={key}
             style={[styles.tab, activeShelf === key && styles.activeTab]}
-            onPress={() => setActiveShelf(key)}
+            onPress={() => { setActiveShelf(key); setSearchQuery(''); }}
           >
             <Text style={[styles.tabText, activeShelf === key && styles.activeTabText]}>
               {label}
@@ -121,21 +178,63 @@ export default function LibraryScreen() {
         ))}
       </View>
 
+      {/* Search bar */}
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={16} color={colors.textTertiary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by title or author..."
+          placeholderTextColor={colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          testID="shelf-search-input"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Sort controls */}
+      <View style={styles.sortRow}>
+        <Text style={styles.sortLabel}>Sort:</Text>
+        <TouchableOpacity
+          style={[styles.sortBtn, sortOrder === 'recent' && styles.sortBtnActive]}
+          onPress={() => setSortOrder('recent')}
+        >
+          <Text style={[styles.sortBtnText, sortOrder === 'recent' && styles.sortBtnTextActive]}>Recent</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
+          onPress={() => setSortOrder('alpha')}
+        >
+          <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A–Z</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={books}
+          data={filteredBooks}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={books.length === 0 ? styles.emptyContainer : styles.list}
+          contentContainerStyle={filteredBooks.length === 0 ? styles.emptyContainer : styles.list}
           renderItem={({ item }) => (
             <TouchableOpacity onPress={() => router.push(`/book/${item.book_id}`)}>
               <BookCard book={item} shelf={activeShelf} />
             </TouchableOpacity>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No books here yet</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() ? `No results for "${searchQuery.trim()}"` : 'No books here yet'}
+            </Text>
+          }
         />
       )}
     </SafeAreaView>

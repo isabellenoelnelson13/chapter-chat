@@ -19,9 +19,11 @@ import { useAuth } from '@/lib/auth';
 import {
   getClub,
   addMember,
+  removeMember,
   setCurrentBook,
   getPosts,
   addPost,
+  deleteClub,
   type ClubDetail,
   type ClubPost,
 } from '@/lib/clubs';
@@ -113,6 +115,50 @@ export default function ClubDetailScreen() {
     } catch {
       Alert.alert('Error', 'Could not change book.');
     }
+  };
+
+  const handleLeaveClub = () => {
+    Alert.alert(
+      'Leave Club',
+      `Are you sure you want to leave "${club?.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeMember(clubId, userId);
+              router.back();
+            } catch {
+              Alert.alert('Error', 'Could not leave the club. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteClub = () => {
+    Alert.alert(
+      'Delete Club',
+      `Are you sure you want to delete "${club?.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteClub(clubId, userId);
+              router.back();
+            } catch {
+              Alert.alert('Error', 'Could not delete the club. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSubmitPost = async () => {
@@ -277,6 +323,15 @@ export default function ClubDetailScreen() {
     },
     searchResultText: { fontSize: 15, fontFamily: Fonts.semiBold, color: colors.textPrimary },
     searchResultSub: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
+    deleteBtn: {
+      borderWidth: 1.5,
+      borderColor: colors.error,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: Spacing.lg,
+    },
+    deleteBtnText: { color: colors.error, fontFamily: Fonts.semiBold, fontSize: 15 },
   }), [colors]);
 
   if (!session) return null;
@@ -401,6 +456,24 @@ export default function ClubDetailScreen() {
               <Text style={styles.replyCount}>{p.replyCount} replies</Text>
             </TouchableOpacity>
           ))
+        )}
+
+        {isOwner ? (
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={handleDeleteClub}
+            testID="delete-club-btn"
+          >
+            <Text style={styles.deleteBtnText}>Delete Club</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={handleLeaveClub}
+            testID="leave-club-btn"
+          >
+            <Text style={styles.deleteBtnText}>Leave Club</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 

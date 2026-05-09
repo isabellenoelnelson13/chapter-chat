@@ -20,6 +20,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import StarRating from '@/components/StarRating';
+import RatingModal from '@/components/RatingModal';
 import { getUserBook, addToShelf, moveShelf, removeFromShelf, rateBook, updateReadDates, updateFormat, type UserBookWithBook, type BookFormat } from '@/lib/userBooks';
 import { getBookById, getBookReviews, updatePageCount, updateCoverUrl, updateBookGenres, searchGoogleImages, refreshBookGenres, refreshBookSeries, type BookDetails, type FriendReview, type SeededReview } from '@/lib/books';
 import { createEvent } from '@/lib/activity';
@@ -57,6 +58,7 @@ export default function BookDetailScreen() {
   const [coverQuery, setCoverQuery] = useState('');
   const [coverResults, setCoverResults] = useState<string[]>([]);
   const [coverSearching, setCoverSearching] = useState(false);
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
 
   const userId = session?.user.id ?? '';
 
@@ -235,8 +237,18 @@ export default function BookDetailScreen() {
     formatBtnText: { fontSize: 12, fontFamily: Fonts.semiBold, color: colors.textSecondary },
     formatBtnTextActive: { color: colors.primary },
 
-    ratingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
-    ratingValue: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    ratingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.lg,
+      ...Shadow.card,
+    },
+    ratingValue: { flex: 1, fontSize: 14, fontFamily: Fonts.semiBold, color: colors.textSecondary },
 
     datesCard: {
       backgroundColor: colors.surface,
@@ -705,19 +717,31 @@ export default function BookDetailScreen() {
           )}
 
           {shelf === 'read' && (
-            <View style={styles.ratingRow} testID="rating-row">
-              <StarRating
-                rating={userBook!.rating ?? 0}
-                size={40}
-                onRate={handleRate}
-              />
-              {(userBook!.rating ?? 0) > 0 && (
-                <Text style={styles.ratingValue}>
-                  {(userBook!.rating!).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')} / 5
-                </Text>
-              )}
-            </View>
+            <TouchableOpacity
+              style={styles.ratingRow}
+              onPress={() => setRatingModalVisible(true)}
+              testID="rating-row"
+              activeOpacity={0.7}
+            >
+              <StarRating rating={userBook!.rating ?? 0} size={28} />
+              <Text style={styles.ratingValue}>
+                {(userBook!.rating ?? 0) > 0
+                  ? `${Number.isInteger(userBook!.rating) ? userBook!.rating : userBook!.rating!.toFixed(1)} / 5`
+                  : 'Tap to rate'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
           )}
+
+          <RatingModal
+            visible={ratingModalVisible}
+            initialRating={userBook?.rating ?? 0}
+            onSave={(rating) => {
+              setRatingModalVisible(false);
+              handleRate(rating);
+            }}
+            onClose={() => setRatingModalVisible(false)}
+          />
 
           {shelf === 'read' && (
             reviewEditing ? (

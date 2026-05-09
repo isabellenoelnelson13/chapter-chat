@@ -24,6 +24,7 @@ import {
   cancelWeeklySummary,
   type NotificationPreferences,
 } from '@/lib/notifications';
+import { getTodayStats } from '@/lib/stats';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
@@ -57,7 +58,8 @@ export default function NotificationSettingsScreen() {
     try {
       await saveNotificationPreferences(userId, updated);
       if (updated.readingReminderEnabled) {
-        await scheduleReadingReminder(updated.readingReminderHour, updated.readingReminderMinute);
+        const todayStats = await getTodayStats(userId);
+        await scheduleReadingReminder(updated.readingReminderHour, updated.readingReminderMinute, todayStats.pagesRead > 0);
       } else {
         await cancelReadingReminder();
       }

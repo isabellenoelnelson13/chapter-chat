@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -26,7 +27,10 @@ import {
   getFeed,
   likeEvent,
   unlikeEvent,
+  getComments,
+  addComment,
   type ActivityEvent,
+  type ActivityComment,
 } from '@/lib/activity';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
@@ -153,11 +157,15 @@ function CommentsModal({ event, userId, onClose }: CommentsModalProps) {
           ) : (
             comments.map((c) => (
               <View key={c.id} style={modalStyles.commentRow}>
-                <View style={modalStyles.commentAvatar}>
-                  <Text style={modalStyles.commentInitial}>
-                    {c.username.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                {c.avatarUrl ? (
+                  <Image source={{ uri: c.avatarUrl }} style={modalStyles.commentAvatar} />
+                ) : (
+                  <View style={modalStyles.commentAvatar}>
+                    <Text style={modalStyles.commentInitial}>
+                      {c.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={modalStyles.commentUsername}>{c.username}</Text>
                   <Text style={modalStyles.commentBody}>{c.body}</Text>
@@ -231,11 +239,15 @@ function FeedCard({
       activeOpacity={0.8}
     >
       <View style={feedStyles.topRow}>
-        <View style={feedStyles.avatar}>
-          <Text style={feedStyles.avatarInitial}>
-            {event.actorUsername.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        {event.actorAvatarUrl ? (
+          <Image source={{ uri: event.actorAvatarUrl }} style={feedStyles.avatar} />
+        ) : (
+          <View style={feedStyles.avatar}>
+            <Text style={feedStyles.avatarInitial}>
+              {event.actorUsername.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={feedStyles.headline} numberOfLines={2}>
             <Text style={feedStyles.username}>{event.actorUsername}</Text>
@@ -461,9 +473,13 @@ export default function SocialScreen() {
       style={styles.userRow}
       onPress={() => router.push(`/user/${user.id}`)}
     >
-      <View style={styles.userAvatar}>
-        <Text style={styles.userInitial}>{user.username.charAt(0).toUpperCase()}</Text>
-      </View>
+      {user.avatar_url ? (
+        <Image source={{ uri: user.avatar_url }} style={styles.userAvatar} />
+      ) : (
+        <View style={styles.userAvatar}>
+          <Text style={styles.userInitial}>{user.username.charAt(0).toUpperCase()}</Text>
+        </View>
+      )}
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.username}</Text>
         {user.bio ? <Text style={styles.userBio} numberOfLines={1}>{user.bio}</Text> : null}
@@ -485,7 +501,7 @@ export default function SocialScreen() {
   if (!session) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -545,11 +561,15 @@ export default function SocialScreen() {
                     style={styles.avatarItem}
                     onPress={() => router.push(`/user/${u.id}`)}
                   >
-                    <View style={styles.avatarCircle}>
-                      <Text style={styles.avatarCircleInitial}>
-                        {u.username.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
+                    {u.avatar_url ? (
+                      <Image source={{ uri: u.avatar_url }} style={styles.avatarCircle} />
+                    ) : (
+                      <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarCircleInitial}>
+                          {u.username.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
                     <Text style={styles.avatarName} numberOfLines={1}>{u.username}</Text>
                   </TouchableOpacity>
                 ))}
