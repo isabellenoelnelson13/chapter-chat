@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import {
   View,
   Text,
@@ -52,6 +53,7 @@ type Period = 'week' | 'month';
 
 export default function StatsScreen() {
   const { colors } = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
   const { session } = useAuth();
   const userId = session?.user.id ?? '';
 
@@ -151,7 +153,7 @@ export default function StatsScreen() {
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scroll: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Spacing.xl },
+    scroll: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: tabBarHeight },
     title: { fontSize: 32, fontFamily: Fonts.bold, color: colors.primary },
 
     row: { flexDirection: 'row', gap: Spacing.sm },
@@ -301,7 +303,7 @@ export default function StatsScreen() {
     legendDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
     legendText: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary, flex: 1 },
     legendCount: { fontFamily: Fonts.bold, color: colors.textPrimary },
-  }), [colors]);
+  }), [colors, tabBarHeight]);
 
   if (!session) return null;
 

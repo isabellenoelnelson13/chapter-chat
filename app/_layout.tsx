@@ -2,16 +2,17 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import {
-  PlayfairDisplay_700Bold,
-} from '@expo-google-fonts/playfair-display';
+  LibreBaskerville_400Regular,
+  LibreBaskerville_700Bold,
+} from '@expo-google-fonts/libre-baskerville';
 import {
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-} from '@expo-google-fonts/manrope';
+  Lato_400Regular,
+  Lato_700Bold,
+} from '@expo-google-fonts/lato';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { ThemeProvider } from '../lib/theme';
+import BookLoader from '@/components/BookLoader';
 import { registerPushToken, getNotificationPreferences, scheduleWeeklySummary } from '../lib/notifications';
 
 // Show notifications when app is in foreground
@@ -98,19 +99,21 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    PlayfairDisplay_700Bold,
-    Manrope_400Regular,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
+    LibreBaskerville_400Regular,
+    LibreBaskerville_700Bold,
+    Lato_400Regular,
+    Lato_700Bold,
   });
-
-  if (!fontsLoaded) return null;
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
+      {fontsLoaded ? (
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      ) : (
+        <BookLoader />
+      )}
     </ThemeProvider>
   );
 }

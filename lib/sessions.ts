@@ -62,3 +62,23 @@ export async function createSession(params: {
 
   await updateCurrentPage(userBookId, endPage);
 }
+
+export async function updateSession(id: string, params: {
+  startPage: number;
+  endPage: number;
+  durationSeconds: number;
+  startedAt: Date;
+}): Promise<void> {
+  const { startPage, endPage, durationSeconds, startedAt } = params;
+  const { error } = await (supabase.from('reading_sessions') as any)
+    .update({ start_page: startPage, end_page: endPage, duration_seconds: durationSeconds, started_at: startedAt.toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  const { error } = await (supabase.from('reading_sessions') as any)
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}

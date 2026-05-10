@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
@@ -28,6 +29,7 @@ const SHELVES: { key: Shelf; label: string }[] = [
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
   const { session } = useAuth();
   const router = useRouter();
 
@@ -146,10 +148,10 @@ export default function LibraryScreen() {
     sortBtnText: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textSecondary },
     sortBtnTextActive: { color: colors.surface },
 
-    list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, gap: Spacing.sm },
+    list: { paddingHorizontal: Spacing.lg, paddingBottom: tabBarHeight, gap: Spacing.sm },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { color: colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
-  }), [colors]);
+  }), [colors, tabBarHeight]);
 
   if (!session) return null;
 

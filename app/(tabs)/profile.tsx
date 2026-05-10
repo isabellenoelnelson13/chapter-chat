@@ -36,9 +36,12 @@ import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow, Themes, type ThemeName } from '@/constants/theme';
 import {
   getFollowRequests,
+  getFollowing,
+  getFollowers,
   approveFollowRequest,
   declineFollowRequest,
   type FollowRequest,
+  type UserSearchResult,
 } from '@/lib/follows';
 
 export default function ProfileScreen() {
@@ -54,6 +57,9 @@ export default function ProfileScreen() {
   const [pagesThisYear, setPagesThisYear] = useState(0);
   const [shelfCounts, setShelfCounts] = useState({ reading: 0, want: 0, read: 0, dnf: 0 });
   const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
+  const [followersList, setFollowersList] = useState<UserSearchResult[]>([]);
+  const [followingList, setFollowingList] = useState<UserSearchResult[]>([]);
+  const [listModal, setListModal] = useState<'followers' | 'following' | null>(null);
   const [themePickerVisible, setThemePickerVisible] = useState(false);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState('');
@@ -73,7 +79,9 @@ export default function ProfileScreen() {
         getShelf(userId, 'read'),
         getShelf(userId, 'dnf'),
         getFollowRequests(userId),
-      ]).then(([p, s, yg, history, reading, want, read, dnf, requests]) => {
+        getFollowing(userId),
+        getFollowers(userId),
+      ]).then(([p, s, yg, history, reading, want, read, dnf, requests, following, followers]) => {
         if (p.status === 'fulfilled') setProfile(p.value);
         if (s.status === 'fulfilled') setStreak(s.value);
         if (yg.status === 'fulfilled') setYearlyGoal(yg.value);
@@ -86,6 +94,8 @@ export default function ProfileScreen() {
           dnf: dnf.status === 'fulfilled' ? dnf.value.length : 0,
         });
         if (requests.status === 'fulfilled') setFollowRequests(requests.value);
+        if (following.status === 'fulfilled') setFollowingList(following.value);
+        if (followers.status === 'fulfilled') setFollowersList(followers.value);
         setLoading(false);
       });
     }, [userId])
@@ -248,6 +258,38 @@ export default function ProfileScreen() {
     themeSwatch: { width: 22, height: 22, borderRadius: 11 },
     themeRowLabel: { flex: 1, fontSize: 15, fontFamily: Fonts.regular, color: colors.textSecondary },
     themeRowLabelActive: { fontFamily: Fonts.semiBold, color: colors.textPrimary },
+
+    followStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    followStat: { alignItems: 'center', paddingHorizontal: Spacing.lg },
+    followStatNumber: { fontSize: 18, fontFamily: Fonts.bold, color: colors.textPrimary },
+    followStatLabel: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary, marginTop: 1 },
+    followStatDivider: { width: 1, height: 28, backgroundColor: colors.border },
+
+    listModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    listModalTitle: { fontSize: 17, fontFamily: Fonts.bold, color: colors.textPrimary },
+    listModalContent: { padding: Spacing.lg, gap: Spacing.md },
+    listModalRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    listModalAvatar: { width: 44, height: 44, borderRadius: 22 },
+    listModalInitial: { fontSize: 18, fontFamily: Fonts.bold, color: colors.surface },
+    listModalUsername: { fontSize: 15, fontFamily: Fonts.semiBold, color: colors.textPrimary },
+    listModalBio: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary, marginTop: 1 },
+    listModalEmpty: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, textAlign: 'center', marginTop: 24 },
   }), [colors]);
 
   if (!session) return null;
@@ -412,6 +454,18 @@ export default function ProfileScreen() {
 
           <Text style={styles.handle}>@{profile?.username ?? ''}</Text>
           {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+
+          <View style={styles.followStats}>
+            <TouchableOpacity style={styles.followStat} onPress={() => setListModal('followers')}>
+              <Text style={styles.followStatNumber}>{followersList.length}</Text>
+              <Text style={styles.followStatLabel}>Followers</Text>
+            </TouchableOpacity>
+            <View style={styles.followStatDivider} />
+            <TouchableOpacity style={styles.followStat} onPress={() => setListModal('following')}>
+              <Text style={styles.followStatNumber}>{followingList.length}</Text>
+              <Text style={styles.followStatLabel}>Following</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats summary */}
@@ -502,6 +556,46 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Followers / Following list modal */}
+      <Modal visible={!!listModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setListModal(null)}>
+        <SafeAreaView style={[styles.container, { paddingTop: 0 }]}>
+          <View style={styles.listModalHeader}>
+            <Text style={styles.listModalTitle}>
+              {listModal === 'followers' ? 'Followers' : 'Following'}
+            </Text>
+            <TouchableOpacity onPress={() => setListModal(null)}>
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.listModalContent}>
+            {(listModal === 'followers' ? followersList : followingList).map(user => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.listModalRow}
+                onPress={() => { setListModal(null); router.push(`/user/${user.id}`); }}
+              >
+                {user.avatar_url ? (
+                  <Image source={{ uri: user.avatar_url }} style={styles.listModalAvatar} />
+                ) : (
+                  <View style={[styles.listModalAvatar, { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={styles.listModalInitial}>{user.username.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listModalUsername}>{user.username}</Text>
+                  {user.bio ? <Text style={styles.listModalBio} numberOfLines={1}>{user.bio}</Text> : null}
+                </View>
+              </TouchableOpacity>
+            ))}
+            {(listModal === 'followers' ? followersList : followingList).length === 0 && (
+              <Text style={styles.listModalEmpty}>
+                {listModal === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
+              </Text>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       <Modal visible={themePickerVisible} transparent animationType="fade">
         <TouchableOpacity style={styles.themeOverlay} activeOpacity={1} onPress={() => setThemePickerVisible(false)}>

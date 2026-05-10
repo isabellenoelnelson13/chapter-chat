@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useAuth } from '@/lib/auth';
 import { getMyClubs, createClub, type ClubSummary } from '@/lib/clubs';
 import { useTheme } from '@/lib/theme';
@@ -19,6 +20,7 @@ import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
 export default function ClubsScreen() {
   const { colors } = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
   const { session } = useAuth();
   const router = useRouter();
   const userId = session?.user.id ?? '';
@@ -77,7 +79,7 @@ export default function ClubsScreen() {
       paddingVertical: 8,
     },
     newBtnText: { color: colors.surface, fontFamily: Fonts.semiBold, fontSize: 14 },
-    list: { padding: Spacing.lg, gap: Spacing.sm },
+    list: { padding: Spacing.lg, paddingBottom: tabBarHeight, gap: Spacing.sm },
     card: {
       backgroundColor: colors.surface,
       borderRadius: Radius.lg,
@@ -129,7 +131,7 @@ export default function ClubsScreen() {
       marginTop: Spacing.sm,
     },
     primaryBtnText: { color: colors.surface, fontSize: 16, fontFamily: Fonts.bold },
-  }), [colors]);
+  }), [colors, tabBarHeight]);
 
   if (!session) return null;
 

@@ -1,10 +1,10 @@
 export const Fonts = {
-  regular: 'Manrope_400Regular',
-  medium: 'Manrope_500Medium',
-  semiBold: 'Manrope_600SemiBold',
-  bold: 'PlayfairDisplay_700Bold',
-  bookTitle: 'PlayfairDisplay_700Bold',
-  bookBody: 'Manrope_400Regular',
+  regular: 'Lato_400Regular',
+  medium: 'Lato_400Regular',
+  semiBold: 'Lato_700Bold',
+  bold: 'LibreBaskerville_700Bold',
+  bookTitle: 'LibreBaskerville_700Bold',
+  bookBody: 'Lato_400Regular',
 };
 
 export interface ColorPalette {

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import {
   View,
   Text,
@@ -10,13 +11,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import {
-  getFollowing,
   searchUsers,
   followUser,
   unfollowUser,
@@ -289,11 +290,11 @@ function FeedCard({
 
 export default function SocialScreen() {
   const { colors } = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
   const { session } = useAuth();
   const router = useRouter();
   const userId = session?.user.id ?? '';
 
-  const [following, setFollowing] = useState<UserSearchResult[]>([]);
   const [feed, setFeed] = useState<ActivityEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -303,12 +304,7 @@ export default function SocialScreen() {
 
   const loadData = useCallback(() => {
     if (!userId) return;
-    Promise.all([getFollowing(userId), getFeed(userId)])
-      .then(([followingData, feedData]) => {
-        setFollowing(followingData);
-        setFeed(feedData);
-      })
-      .catch(() => {});
+    getFeed(userId).then(setFeed).catch(() => {});
   }, [userId]);
 
   useFocusEffect(
@@ -319,12 +315,7 @@ export default function SocialScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    Promise.all([getFollowing(userId), getFeed(userId)])
-      .then(([followingData, feedData]) => {
-        setFollowing(followingData);
-        setFeed(feedData);
-      })
-      .finally(() => setRefreshing(false));
+    getFeed(userId).then(setFeed).finally(() => setRefreshing(false));
   };
 
   const handleSearchChange = (text: string) => {
@@ -346,15 +337,13 @@ export default function SocialScreen() {
     }, 300);
   };
 
-  const handleFollow = async (user: UserSearchResult, list: 'search' | 'following') => {
-    const next =
-      user.followStatus === 'none'
-        ? (user.is_private ? 'requested' : 'following')
-        : 'none';
-    const update = (prev: UserSearchResult[]) =>
-      prev.map(u => u.id === user.id ? { ...u, followStatus: next as UserSearchResult['followStatus'] } : u);
-    if (list === 'search') setSearchResults(update);
-    else setFollowing(update);
+  const handleFollow = async (user: UserSearchResult) => {
+    const next = user.followStatus === 'none'
+      ? (user.is_private ? 'requested' : 'following')
+      : 'none';
+    setSearchResults(prev =>
+      prev.map(u => u.id === user.id ? { ...u, followStatus: next as UserSearchResult['followStatus'] } : u)
+    );
     if (user.followStatus === 'none') {
       await followUser(userId, user.id, user.is_private);
     } else if (user.followStatus === 'requested') {
@@ -385,7 +374,7 @@ export default function SocialScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { padding: Spacing.lg, gap: Spacing.lg },
+    scroll: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: tabBarHeight },
     title: { fontSize: 32, fontFamily: Fonts.bold, color: colors.primary },
     titleRow: {
       flexDirection: 'row',
@@ -410,31 +399,6 @@ export default function SocialScreen() {
     searchInput: { flex: 1, fontSize: 15, fontFamily: Fonts.regular, color: colors.textPrimary },
     sectionTitle: { fontSize: 18, fontFamily: Fonts.bold, color: colors.textPrimary },
     emptyText: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary },
-
-    followingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    followingCount: {
-      fontSize: 13, fontFamily: Fonts.semiBold,
-      color: colors.surface,
-      backgroundColor: colors.primary,
-      borderRadius: 10,
-      paddingHorizontal: 7,
-      paddingVertical: 1,
-      overflow: 'hidden',
-    },
-    avatarStrip: { paddingVertical: 4, gap: Spacing.md },
-    avatarItem: { alignItems: 'center', width: 64 },
-    avatarCircle: {
-      width: 52, height: 52, borderRadius: 26,
-      backgroundColor: colors.primary,
-      justifyContent: 'center', alignItems: 'center',
-      ...Shadow.card,
-    },
-    avatarCircleInitial: { fontSize: 20, fontFamily: Fonts.bold, color: colors.surface },
-    avatarName: {
-      fontSize: 11, fontFamily: Fonts.medium,
-      color: colors.textSecondary,
-      marginTop: 5, textAlign: 'center',
-    },
 
     userRow: {
       flexDirection: 'row',
@@ -465,9 +429,9 @@ export default function SocialScreen() {
     },
     followBtnText: { color: colors.surface, fontFamily: Fonts.bold, fontSize: 13 },
     followBtnTextOutlined: { color: colors.primary, fontFamily: Fonts.bold },
-  }), [colors]);
+  }), [colors, tabBarHeight]);
 
-  const renderUserRow = (user: UserSearchResult, list: 'search' | 'following') => (
+  const renderUserRow = (user: UserSearchResult) => (
     <TouchableOpacity
       key={user.id}
       style={styles.userRow}
@@ -486,7 +450,7 @@ export default function SocialScreen() {
       </View>
       <TouchableOpacity
         style={[styles.followBtn, user.followStatus !== 'none' && styles.followBtnOutlined]}
-        onPress={() => handleFollow(user, list)}
+        onPress={() => handleFollow(user)}
         testID={`follow-btn-${user.id}`}
       >
         <Text style={[styles.followBtnText, user.followStatus !== 'none' && styles.followBtnTextOutlined]}>
@@ -537,46 +501,10 @@ export default function SocialScreen() {
           ) : searchResults.length === 0 ? (
             <Text style={styles.emptyText}>No users found</Text>
           ) : (
-            searchResults.map(u => renderUserRow(u, 'search'))
+            searchResults.map(u => renderUserRow(u))
           )
         ) : (
           <>
-            <View style={styles.followingHeader}>
-              <Text style={styles.sectionTitle}>Following</Text>
-              {following.length > 0 && (
-                <Text style={styles.followingCount}>{following.length}</Text>
-              )}
-            </View>
-            {following.length === 0 ? (
-              <Text style={styles.emptyText}>Search for people to follow.</Text>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.avatarStrip}
-              >
-                {following.map(u => (
-                  <TouchableOpacity
-                    key={u.id}
-                    style={styles.avatarItem}
-                    onPress={() => router.push(`/user/${u.id}`)}
-                  >
-                    {u.avatar_url ? (
-                      <Image source={{ uri: u.avatar_url }} style={styles.avatarCircle} />
-                    ) : (
-                      <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarCircleInitial}>
-                          {u.username.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                    <Text style={styles.avatarName} numberOfLines={1}>{u.username}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-
-            <Text style={styles.sectionTitle}>Activity</Text>
             {feed.length === 0 ? (
               <Text style={styles.emptyText}>Follow people to see their activity here.</Text>
             ) : (

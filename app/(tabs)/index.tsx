@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import {
   View,
   Text,
@@ -63,6 +64,7 @@ function formatTime(seconds: number): string {
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const tabBarHeight = useBottomTabBarHeight();
   const { session } = useAuth();
   const router = useRouter();
 
@@ -111,7 +113,7 @@ export default function HomeScreen() {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    scroll: { padding: Spacing.lg, gap: Spacing.lg },
+    scroll: { padding: Spacing.lg, gap: Spacing.lg, paddingBottom: tabBarHeight },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -234,7 +236,7 @@ export default function HomeScreen() {
     },
     statValue: { fontSize: 22, fontFamily: Fonts.bold, color: colors.textPrimary },
     statLabel: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary },
-  }), [colors]);
+  }), [colors, tabBarHeight]);
 
   if (!session) return null;
 
@@ -386,17 +388,17 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Ionicons name="book-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{stats.pagesRead}</Text>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{stats.pagesRead}</Text>
             <Text style={styles.statLabel}>Pages</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="time-outline" size={20} color={colors.primary} />
-            <Text style={styles.statValue}>{formatTime(stats.timeSeconds)}</Text>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{formatTime(stats.timeSeconds)}</Text>
             <Text style={styles.statLabel}>Time</Text>
           </View>
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/quick-log')}>
             <Ionicons name="flame" size={20} color={colors.orange} />
-            <Text style={styles.statValue}>{stats.streak}</Text>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{stats.streak}</Text>
             <Text style={styles.statLabel}>Streak</Text>
           </TouchableOpacity>
         </View>

@@ -144,6 +144,19 @@ export async function getFollowing(userId: string): Promise<UserSearchResult[]> 
   }));
 }
 
+export async function getFollowers(userId: string): Promise<UserSearchResult[]> {
+  const { data, error } = await supabase
+    .from('follows')
+    .select('profile:profiles!follower_id(id, username, bio, is_private, avatar_url)')
+    .eq('following_id', userId);
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    ...row.profile,
+    avatar_url: row.profile.avatar_url ?? null,
+    followStatus: 'none' as const,
+  }));
+}
+
 export async function getFollowRequests(userId: string): Promise<FollowRequest[]> {
   const { data, error } = await supabase
     .from('follow_requests')

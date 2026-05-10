@@ -24,7 +24,7 @@ import RatingModal from '@/components/RatingModal';
 import { getUserBook, addToShelf, moveShelf, removeFromShelf, rateBook, updateReadDates, updateFormat, type UserBookWithBook, type BookFormat } from '@/lib/userBooks';
 import { getBookById, getBookReviews, updatePageCount, updateCoverUrl, updateBookGenres, searchGoogleImages, refreshBookGenres, refreshBookSeries, type BookDetails, type FriendReview, type SeededReview } from '@/lib/books';
 import { createEvent } from '@/lib/activity';
-import { getReadingSessions, type ReadingSession } from '@/lib/sessions';
+import { getReadingSessions, updateSession, deleteSession, type ReadingSession } from '@/lib/sessions';
 import { Shelf } from '@/types/database';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
@@ -54,6 +54,13 @@ export default function BookDetailScreen() {
   const [datePickerField, setDatePickerField] = useState<'started_at' | 'finished_at' | null>(null);
   const [datePickerValue, setDatePickerValue] = useState(new Date());
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([]);
+  const [editingSession, setEditingSession] = useState<ReadingSession | null>(null);
+  const [sessionStartPage, setSessionStartPage] = useState('');
+  const [sessionEndPage, setSessionEndPage] = useState('');
+  const [sessionMinutes, setSessionMinutes] = useState('');
+  const [sessionDate, setSessionDate] = useState(new Date());
+  const [sessionDatePickerVisible, setSessionDatePickerVisible] = useState(false);
+  const [savingSession, setSavingSession] = useState(false);
   const [coverSearchVisible, setCoverSearchVisible] = useState(false);
   const [coverQuery, setCoverQuery] = useState('');
   const [coverResults, setCoverResults] = useState<string[]>([]);
@@ -384,6 +391,25 @@ export default function BookDetailScreen() {
     sessionDate: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textPrimary },
     sessionMeta: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary, marginTop: 2 },
     sessionDuration: { fontSize: 13, fontFamily: Fonts.medium, color: colors.primary },
+
+    sessionEditBody: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.lg },
+    sessionEditRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: Spacing.sm,
+    },
+    sessionEditLabel: { flex: 1, fontSize: 15, fontFamily: Fonts.regular, color: colors.textPrimary },
+    sessionEditValue: { fontSize: 15, fontFamily: Fonts.regular, color: colors.textSecondary },
+    sessionEditInput: {
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+      color: colors.textPrimary,
+      textAlign: 'right',
+      minWidth: 60,
+    },
   }), [colors]);
 
   if (!session) return null;
@@ -516,6 +542,74 @@ export default function BookDetailScreen() {
     const updated = genres.length > 0 ? genres : (book.genres ?? []);
     setBook({ ...book, genres: updated });
     await updateBookGenres(book.id, updated);
+  };
+
+  const openEditSession = (s: ReadingSession) => {
+    setSessionStartPage(String(s.start_page));
+    setSessionEndPage(String(s.end_page));
+    setSessionMinutes(s.duration_seconds > 0 ? String(Math.round(s.duration_seconds / 60)) : '');
+    setSessionDate(new Date(s.started_at));
+    setSessionDatePickerVisible(false);
+    setEditingSession(s);
+  };
+
+  const handleSessionOptions = (s: ReadingSession) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Edit', 'Delete'], destructiveButtonIndex: 2, cancelButtonIndex: 0 },
+        (i) => {
+          if (i === 1) openEditSession(s);
+          if (i === 2) confirmDeleteSession(s.id);
+        }
+      );
+    } else {
+      Alert.alert('Session', undefined, [
+        { text: 'Edit', onPress: () => openEditSession(s) },
+        { text: 'Delete', style: 'destructive', onPress: () => confirmDeleteSession(s.id) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  };
+
+  const confirmDeleteSession = (id: string) => {
+    Alert.alert('Delete Session', 'Remove this reading session?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteSession(id) },
+    ]);
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    try {
+      await deleteSession(id);
+      setReadingSessions(prev => prev.filter(s => s.id !== id));
+    } catch {
+      Alert.alert('Error', 'Could not delete session.');
+    }
+  };
+
+  const handleSaveSession = async () => {
+    if (!editingSession) return;
+    const startPage = parseInt(sessionStartPage, 10);
+    const endPage = parseInt(sessionEndPage, 10);
+    if (isNaN(startPage) || isNaN(endPage) || startPage < 0 || endPage < startPage) {
+      Alert.alert('Invalid pages', 'End page must be greater than or equal to start page.');
+      return;
+    }
+    const durationSeconds = sessionMinutes ? Math.round(parseFloat(sessionMinutes) * 60) : 0;
+    setSavingSession(true);
+    try {
+      await updateSession(editingSession.id, { startPage, endPage, durationSeconds, startedAt: sessionDate });
+      setReadingSessions(prev => prev.map(s =>
+        s.id === editingSession.id
+          ? { ...s, start_page: startPage, end_page: endPage, duration_seconds: durationSeconds, started_at: sessionDate.toISOString() }
+          : s
+      ));
+      setEditingSession(null);
+    } catch {
+      Alert.alert('Error', 'Could not save session.');
+    } finally {
+      setSavingSession(false);
+    }
   };
 
   const openCoverSearch = () => {
@@ -894,6 +988,9 @@ export default function BookDetailScreen() {
                     </Text>
                   </View>
                   {durationLabel && <Text style={styles.sessionDuration}>{durationLabel}</Text>}
+                  <TouchableOpacity onPress={() => handleSessionOptions(s)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="ellipsis-horizontal" size={16} color={colors.textTertiary} />
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -990,6 +1087,76 @@ export default function BookDetailScreen() {
       </Modal>
 
       {/* Date Picker — iOS modal, Android inline */}
+      {/* Edit Session Modal */}
+      <Modal visible={!!editingSession} transparent animationType="slide">
+        <View style={styles.datePickerOverlay}>
+          <View style={styles.datePickerSheet}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity onPress={() => setEditingSession(null)}>
+                <Text style={styles.datePickerCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitle}>Edit Session</Text>
+              <TouchableOpacity onPress={handleSaveSession} disabled={savingSession}>
+                <Text style={[styles.datePickerDone, savingSession && { opacity: 0.4 }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sessionEditBody}>
+              <TouchableOpacity style={styles.sessionEditRow} onPress={() => setSessionDatePickerVisible(v => !v)}>
+                <Text style={styles.sessionEditLabel}>Date</Text>
+                <Text style={styles.sessionEditValue}>
+                  {sessionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </Text>
+                <Ionicons name={sessionDatePickerVisible ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textTertiary} />
+              </TouchableOpacity>
+              {sessionDatePickerVisible && (
+                <DateTimePicker
+                  value={sessionDate}
+                  mode="date"
+                  display="spinner"
+                  maximumDate={new Date()}
+                  textColor={colors.textPrimary}
+                  onChange={(_, d) => { if (d) setSessionDate(d); }}
+                />
+              )}
+              <View style={styles.sessionEditRow}>
+                <Text style={styles.sessionEditLabel}>Start page</Text>
+                <TextInput
+                  style={styles.sessionEditInput}
+                  value={sessionStartPage}
+                  onChangeText={setSessionStartPage}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+              <View style={styles.sessionEditRow}>
+                <Text style={styles.sessionEditLabel}>End page</Text>
+                <TextInput
+                  style={styles.sessionEditInput}
+                  value={sessionEndPage}
+                  onChangeText={setSessionEndPage}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+              <View style={styles.sessionEditRow}>
+                <Text style={styles.sessionEditLabel}>Duration (min)</Text>
+                <TextInput
+                  style={styles.sessionEditInput}
+                  value={sessionMinutes}
+                  onChangeText={setSessionMinutes}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {datePickerField && Platform.OS === 'ios' && (
         <Modal transparent animationType="slide">
           <View style={styles.datePickerOverlay}>

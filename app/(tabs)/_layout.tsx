@@ -66,14 +66,14 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="clubs"
-        options={{
-          title: 'Clubs',
-          tabBarIcon: tabIcon('people-circle', 'people-circle-outline'),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ href: null }}
+        options={{
+          title: 'Profile',
+          tabBarIcon: tabIcon('person-circle', 'person-circle-outline'),
+        }}
       />
       <Tabs.Screen
         name="discover"
