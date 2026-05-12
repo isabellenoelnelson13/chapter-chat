@@ -4,6 +4,22 @@
 
 ---
 
+## Screenshots
+
+<div align="center">
+
+| Home | Stats | Book Detail |
+|------|-------|-------------|
+| ![Home screen](screenshots/home.png) | ![Stats screen](screenshots/stats.png) | ![Book detail & reviews](screenshots/book-detail.png) |
+
+| Library | Direct Messages | Book Club |
+|---------|-----------------|-----------|
+| ![Library shelf](screenshots/library.png) | ![Direct messages](screenshots/messages.png) | ![Club suggestions](screenshots/club.png) |
+
+</div>
+
+---
+
 ## Highlights
 
 - **15+ database migrations** across a normalized PostgreSQL schema with row-level security on every table
