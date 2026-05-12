@@ -29,6 +29,7 @@ import {
   updateYearlyGoal,
   updatePrivacy,
   updateDisplayName,
+  updateUsername,
   pickAndUploadAvatar,
   type UserProfile,
 } from '@/lib/profile';
@@ -63,6 +64,8 @@ export default function ProfileScreen() {
   const [themePickerVisible, setThemePickerVisible] = useState(false);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState('');
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useFocusEffect(
@@ -362,8 +365,27 @@ export default function ProfileScreen() {
     await updateDisplayName(userId, trimmed);
   };
 
+  const handleSaveUsername = async () => {
+    setEditingUsername(false);
+    if (!profile) return;
+    const trimmed = usernameInput.trim();
+    if (trimmed === profile.username) return;
+    const errorMsg = await updateUsername(userId, trimmed);
+    if (errorMsg) {
+      Alert.alert('Invalid username', errorMsg);
+    } else {
+      setProfile({ ...profile, username: trimmed.toLowerCase() });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <TouchableOpacity
+        style={{ alignSelf: 'flex-end', padding: Spacing.md, paddingBottom: 0 }}
+        onPress={() => router.push('/messages')}
+      >
+        <Ionicons name="chatbubbles-outline" size={24} color={colors.primary} />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Follow requests */}
         {followRequests.length > 0 && (
@@ -452,7 +474,35 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
 
-          <Text style={styles.handle}>@{profile?.username ?? ''}</Text>
+          {editingUsername ? (
+            <View style={styles.displayNameRow}>
+              <Text style={styles.handle}>@</Text>
+              <TextInput
+                style={styles.displayNameInput}
+                value={usernameInput}
+                onChangeText={setUsernameInput}
+                placeholder="username"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+                returnKeyType="done"
+                onBlur={handleSaveUsername}
+                onSubmitEditing={handleSaveUsername}
+              />
+              <TouchableOpacity onPress={handleSaveUsername}>
+                <Text style={styles.displayNameSave}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.displayNameRow}
+              onPress={() => { setUsernameInput(profile?.username ?? ''); setEditingUsername(true); }}
+            >
+              <Text style={styles.handle}>@{profile?.username ?? ''}</Text>
+              <Ionicons name="pencil-outline" size={13} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
           {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
           <View style={styles.followStats}>

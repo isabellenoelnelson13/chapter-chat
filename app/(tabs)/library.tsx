@@ -19,6 +19,7 @@ import { getShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { Shelf } from '@/types/database';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import StarRating from '@/components/StarRating';
 
 const SHELVES: { key: Shelf; label: string }[] = [
   { key: 'reading', label: 'Reading' },
@@ -280,7 +281,6 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
     },
     progressFill: { height: 3, backgroundColor: colors.progressFill, borderRadius: 2 },
     progressPct: { color: colors.textSecondary, fontSize: 12, fontFamily: Fonts.regular },
-    rating: { color: colors.primary, fontSize: 14, fontFamily: Fonts.regular },
   }), [colors]);
 
   return (
@@ -312,10 +312,7 @@ function BookCard({ book, shelf }: { book: UserBookWithBook; shelf: Shelf }) {
           </>
         )}
         {shelf === 'read' && book.rating !== null && (
-          <Text style={styles.rating}>
-            {'★'.repeat(Math.min(5, Math.max(0, book.rating ?? 0)))}
-            {'☆'.repeat(5 - Math.min(5, Math.max(0, book.rating ?? 0)))}
-          </Text>
+          <StarRating rating={book.rating} size={14} gap={2} color={colors.primary} />
         )}
       </View>
     </View>

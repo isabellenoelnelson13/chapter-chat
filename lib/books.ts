@@ -3,6 +3,14 @@ import { Database } from '@/types/database';
 
 export type BookDetails = Database['public']['Tables']['books']['Row'];
 
+export interface BookSummary {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+  genres: string[] | null;
+}
+
 export interface BookSearchResult {
   hardcover_id: string;
   title: string;
@@ -149,6 +157,10 @@ export interface FriendReview {
   finishedAt: string | null;
 }
 
+export interface RatingBreakdown {
+  5: number; 4: number; 3: number; 2: number; 1: number;
+}
+
 export interface SeededReview {
   id: string;
   reviewerName: string | null;
@@ -247,7 +259,7 @@ export async function refreshBookSeries(bookId: string, hardcoverId: string): Pr
 export async function getBookReviews(
   bookId: string,
   userId: string
-): Promise<{ friendReviews: FriendReview[]; topReviews: SeededReview[] }> {
+): Promise<{ friendReviews: FriendReview[]; topReviews: SeededReview[]; communityReviews: FriendReview[]; ratingBreakdown: RatingBreakdown }> {
   // 1. Fetch IDs the current user follows
   const { data: followData, error: followError } = await supabase
     .from('follows')
@@ -257,8 +269,8 @@ export async function getBookReviews(
 
   const followingIds = (followData ?? []).map((f) => f.following_id);
 
-  // 2. Fetch friend reviews and seeded reviews in parallel
-  const [friendRes, seededRes] = await Promise.all([
+  // 2. Fetch friend reviews, seeded reviews, and all other user reviews in parallel
+  const [friendRes, seededRes, communityRes] = await Promise.all([
     followingIds.length > 0
       ? supabase
           .from('user_books')
@@ -272,11 +284,21 @@ export async function getBookReviews(
       .select('*')
       .eq('book_id', bookId)
       .order('helpful_votes', { ascending: false })
-      .limit(10),
+      .limit(20),
+    supabase
+      .from('user_books')
+      .select('user_id, rating, review, finished_at, profiles(username, avatar_url)')
+      .eq('book_id', bookId)
+      .not('review', 'is', null)
+      .neq('user_id', userId)
+      .order('finished_at', { ascending: false })
+      .limit(20),
   ]);
 
   if (friendRes.error) throw friendRes.error;
   if (seededRes.error) throw seededRes.error;
+
+  const followingIdSet = new Set(followingIds);
 
   const friendReviews: FriendReview[] = (friendRes.data ?? []).map((row: any) => ({
     userId: row.user_id,
@@ -296,5 +318,61 @@ export async function getBookReviews(
     helpfulVotes: row.helpful_votes,
   }));
 
-  return { friendReviews, topReviews };
+  // Community reviews = all other users except self and friends (already shown above)
+  const communityReviews: FriendReview[] = (communityRes.data ?? [])
+    .filter((row: any) => !followingIdSet.has(row.user_id))
+    .map((row: any) => ({
+      userId: row.user_id,
+      username: (row.profiles as any)?.username ?? 'Unknown',
+      avatarUrl: (row.profiles as any)?.avatar_url ?? null,
+      rating: row.rating,
+      review: row.review as string,
+      finishedAt: row.finished_at,
+    }));
+
+  const ratingBreakdown: RatingBreakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  for (const r of topReviews) {
+    if (r.rating != null) {
+      const star = Math.round(r.rating) as 1 | 2 | 3 | 4 | 5;
+      if (star >= 1 && star <= 5) ratingBreakdown[star]++;
+    }
+  }
+
+  return { friendReviews, topReviews, communityReviews, ratingBreakdown };
+}
+
+export async function getSimilarBooks(
+  bookId: string,
+  userId: string,
+  genres: string[],
+): Promise<BookSummary[]> {
+  // Books the user already has in their library — we exclude these
+  const { data: userBooks } = await supabase
+    .from('user_books')
+    .select('book_id')
+    .eq('user_id', userId);
+
+  const excludeIds = new Set([bookId, ...(userBooks?.map(b => b.book_id) ?? [])]);
+
+  if (genres.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('books')
+    .select('id, title, author, cover_url, genres')
+    .overlaps('genres', genres)
+    .neq('id', bookId)
+    .limit(20);
+
+  if (error) return [];
+
+  return (data ?? [])
+    .filter(row => !excludeIds.has(row.id))
+    .map(row => ({
+      id: row.id,
+      title: row.title,
+      author: row.author,
+      cover_url: row.cover_url ?? null,
+      genres: row.genres ?? null,
+    }))
+    .slice(0, 12);
 }

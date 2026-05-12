@@ -20,7 +20,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { getShelf, updateProgressPercent, type UserBookWithBook } from '@/lib/userBooks';
@@ -34,8 +34,10 @@ export default function ManualSessionScreen() {
   const { session } = useAuth();
   const userId = session!.user.id;
   const router = useRouter();
+  const { bookId: paramBookId } = useLocalSearchParams<{ bookId?: string }>();
 
   const [readingBooks, setReadingBooks] = useState<UserBookWithBook[]>([]);
+  const [readBooks, setReadBooks] = useState<UserBookWithBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<UserBookWithBook | null>(null);
   const [loading, setLoading] = useState(true);
   const [startPage, setStartPage] = useState('');
@@ -57,20 +59,25 @@ export default function ManualSessionScreen() {
   const isPercent = selectedBook?.format === 'ebook' || selectedBook?.format === 'audiobook';
 
   useEffect(() => {
-    getShelf(userId, 'reading')
-      .then((books) => {
-        setReadingBooks(books);
-        if (books.length > 0) {
-          setSelectedBook(books[0]);
-          const isP = books[0].format === 'ebook' || books[0].format === 'audiobook';
+    Promise.all([getShelf(userId, 'reading'), getShelf(userId, 'read')])
+      .then(([reading, read]) => {
+        setReadingBooks(reading);
+        setReadBooks(read);
+        const allBooks = [...reading, ...read];
+        const preSelected = paramBookId
+          ? allBooks.find(b => b.book_id === paramBookId) ?? null
+          : reading[0] ?? null;
+        if (preSelected) {
+          setSelectedBook(preSelected);
+          const isP = preSelected.format === 'ebook' || preSelected.format === 'audiobook';
           setStartPage(isP
-            ? String(Math.round(books[0].progress_percent ?? 0))
-            : String(books[0].current_page));
+            ? String(Math.round(preSelected.progress_percent ?? 0))
+            : String(preSelected.current_page));
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [userId]);
+  }, [userId, paramBookId]);
 
   const logSession = async () => {
     setError('');
@@ -107,6 +114,7 @@ export default function ManualSessionScreen() {
     const sessionStartPage = isPercent ? Math.round(sp / 100 * effectivePageCount) : sp;
     const sessionEndPage = isPercent ? Math.round(ep / 100 * effectivePageCount) : ep;
 
+    const isReadBook = readBooks.some(b => b.id === selectedBook.id);
     try {
       await createSession({
         userId,
@@ -116,8 +124,9 @@ export default function ManualSessionScreen() {
         endPage: sessionEndPage,
         durationSeconds,
         startedAt: sessionDate,
+        skipProgressUpdate: isReadBook,
       });
-      if (isPercent) {
+      if (isPercent && !isReadBook) {
         await updateProgressPercent(selectedBook.id, ep);
       }
       successOpacity.value = withSequence(
@@ -264,13 +273,13 @@ export default function ManualSessionScreen() {
           <Text style={styles.bookTitle}>{selectedBook.book.title}</Text>
         )}
 
-        {readingBooks.length === 0 && (
-          <Text style={styles.noBooks}>No books currently being read</Text>
+        {readingBooks.length === 0 && readBooks.length === 0 && (
+          <Text style={styles.noBooks}>No books in your library</Text>
         )}
 
-        {readingBooks.length > 1 && (
+        {(readingBooks.length + readBooks.length) > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bookPicker}>
-            {readingBooks.map((book) => (
+            {[...readingBooks, ...readBooks].map((book) => (
               <TouchableOpacity
                 key={book.id}
                 style={[

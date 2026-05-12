@@ -43,8 +43,9 @@ export async function createSession(params: {
   endPage: number;
   durationSeconds: number;
   startedAt: Date;
+  skipProgressUpdate?: boolean;
 }): Promise<void> {
-  const { userId, bookId, userBookId, startPage, endPage, durationSeconds, startedAt } = params;
+  const { userId, bookId, userBookId, startPage, endPage, durationSeconds, startedAt, skipProgressUpdate } = params;
 
   const insert: SessionInsert = {
     user_id: userId,
@@ -60,7 +61,9 @@ export async function createSession(params: {
   const { error } = await (supabase.from('reading_sessions') as any).insert(insert);
   if (error) throw error;
 
-  await updateCurrentPage(userBookId, endPage);
+  if (!skipProgressUpdate) {
+    await updateCurrentPage(userBookId, endPage);
+  }
 }
 
 export async function updateSession(id: string, params: {

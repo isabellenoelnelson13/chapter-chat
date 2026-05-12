@@ -37,6 +37,18 @@ export interface ClubDetail {
   history: ClubBook[];
 }
 
+export interface ClubSuggestion {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  bookCoverUrl: string | null;
+  bookAuthor: string;
+  suggestedBy: string;
+  suggestedByUsername: string;
+  voteCount: number;
+  votedByMe: boolean;
+}
+
 export interface ClubPost {
   id: string;
   clubId: string;
@@ -298,6 +310,75 @@ export async function deleteClub(clubId: string, userId: string): Promise<void> 
     .delete()
     .eq('id', clubId)
     .eq('owner_id', userId);
+  if (error) throw error;
+}
+
+export async function getSuggestions(clubId: string, userId: string): Promise<ClubSuggestion[]> {
+  const { data: rows, error } = await supabase
+    .from('club_suggestions')
+    .select('id, book_id, suggested_by, book:books!book_id(title, cover_url, author), suggester:profiles!suggested_by(username)')
+    .eq('club_id', clubId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  if (!rows || rows.length === 0) return [];
+
+  const ids = rows.map((r: any) => r.id);
+  const { data: votes } = await supabase
+    .from('club_suggestion_votes')
+    .select('suggestion_id, user_id')
+    .in('suggestion_id', ids);
+
+  const voteMap = new Map<string, { count: number; votedByMe: boolean }>();
+  for (const v of votes ?? []) {
+    const entry = voteMap.get(v.suggestion_id) ?? { count: 0, votedByMe: false };
+    entry.count++;
+    if (v.user_id === userId) entry.votedByMe = true;
+    voteMap.set(v.suggestion_id, entry);
+  }
+
+  return rows
+    .map((r: any) => ({
+      id: r.id,
+      bookId: r.book_id,
+      bookTitle: r.book.title,
+      bookCoverUrl: r.book.cover_url ?? null,
+      bookAuthor: r.book.author,
+      suggestedBy: r.suggested_by,
+      suggestedByUsername: r.suggester.username,
+      voteCount: voteMap.get(r.id)?.count ?? 0,
+      votedByMe: voteMap.get(r.id)?.votedByMe ?? false,
+    }))
+    .sort((a, b) => b.voteCount - a.voteCount);
+}
+
+export async function addSuggestion(clubId: string, bookId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('club_suggestions')
+    .insert({ club_id: clubId, book_id: bookId, suggested_by: userId });
+  if (error) throw error;
+}
+
+export async function removeSuggestion(suggestionId: string): Promise<void> {
+  const { error } = await supabase
+    .from('club_suggestions')
+    .delete()
+    .eq('id', suggestionId);
+  if (error) throw error;
+}
+
+export async function voteSuggestion(suggestionId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('club_suggestion_votes')
+    .insert({ suggestion_id: suggestionId, user_id: userId });
+  if (error) throw error;
+}
+
+export async function unvoteSuggestion(suggestionId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('club_suggestion_votes')
+    .delete()
+    .eq('suggestion_id', suggestionId)
+    .eq('user_id', userId);
   if (error) throw error;
 }
 

@@ -417,26 +417,28 @@ export default function HomeScreen() {
             <Text style={styles.emptyFeedText}>Follow friends to see their activity</Text>
           </TouchableOpacity>
         ) : (
-          friendsFeed.map((event) => (
-            <TouchableOpacity
-              key={event.id}
-              style={styles.feedCard}
-              onPress={() => router.push(`/activity/${event.id}`)}
-            >
-              {event.bookCoverUrl ? (
-                <Image source={{ uri: event.bookCoverUrl }} style={styles.feedCover} />
-              ) : (
-                <View style={styles.feedCoverPlaceholder} />
-              )}
-              <View style={styles.feedInfo}>
-                <Text style={styles.feedUsername}>{event.actorUsername}</Text>
-                <Text style={styles.feedSummary} numberOfLines={2}>
-                  {eventSummary(event)}
-                </Text>
-                <Text style={styles.feedTime}>{timeAgo(event.createdAt)}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+          <View style={{ gap: Spacing.sm }}>
+            {friendsFeed.map((event) => (
+              <TouchableOpacity
+                key={event.id}
+                style={styles.feedCard}
+                onPress={() => router.push(`/activity/${event.id}`)}
+              >
+                {event.bookCoverUrl ? (
+                  <Image source={{ uri: event.bookCoverUrl }} style={styles.feedCover} />
+                ) : (
+                  <View style={styles.feedCoverPlaceholder} />
+                )}
+                <View style={styles.feedInfo}>
+                  <Text style={styles.feedUsername}>{event.actorUsername}</Text>
+                  <Text style={styles.feedSummary} numberOfLines={2}>
+                    {eventSummary(event)}
+                  </Text>
+                  <Text style={styles.feedTime}>{timeAgo(event.createdAt)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

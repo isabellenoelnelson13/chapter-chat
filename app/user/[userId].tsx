@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -20,13 +20,16 @@ import {
   unfollowUser,
   cancelFollowRequest,
 } from '@/lib/follows';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
+import { getOrCreateConversation } from '@/lib/messages';
 
 export default function UserProfileScreen() {
   const { colors } = useTheme();
   const { userId: targetUserId } = useLocalSearchParams<{ userId: string }>();
   const { session } = useAuth();
+  const router = useRouter();
   const currentUserId = session?.user.id ?? '';
 
   const [loading, setLoading] = useState(true);
@@ -81,11 +84,14 @@ export default function UserProfileScreen() {
     initial: { fontSize: 32, fontFamily: Fonts.bold, color: colors.surface },
     username: { fontSize: 24, fontFamily: Fonts.bold, color: colors.textPrimary },
     bio: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, textAlign: 'center' },
+    actionRow: { flexDirection: 'row', gap: Spacing.sm },
     followBtn: {
+      flex: 1,
       backgroundColor: colors.primary,
       borderRadius: Radius.xl,
       paddingHorizontal: 32,
       paddingVertical: 10,
+      alignItems: 'center',
     },
     followBtnOutlined: {
       backgroundColor: 'transparent',
@@ -94,6 +100,12 @@ export default function UserProfileScreen() {
     },
     followBtnText: { color: colors.surface, fontFamily: Fonts.bold, fontSize: 15 },
     followBtnTextOutlined: { color: colors.primary, fontFamily: Fonts.bold },
+    messageBtn: {
+      borderRadius: Radius.xl,
+      paddingHorizontal: 18, paddingVertical: 10,
+      borderWidth: 1.5, borderColor: colors.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
     pillRow: {
       flexDirection: 'row',
       gap: Spacing.sm,
@@ -164,16 +176,28 @@ export default function UserProfileScreen() {
           {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>
 
-        {/* Follow button */}
-        <TouchableOpacity
-          style={[styles.followBtn, followOutlined && styles.followBtnOutlined]}
-          onPress={handleFollow}
-          testID="follow-btn"
-        >
-          <Text style={[styles.followBtnText, followOutlined && styles.followBtnTextOutlined]}>
-            {followLabel}
-          </Text>
-        </TouchableOpacity>
+        {/* Follow + Message buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.followBtn, followOutlined && styles.followBtnOutlined]}
+            onPress={handleFollow}
+            testID="follow-btn"
+          >
+            <Text style={[styles.followBtnText, followOutlined && styles.followBtnTextOutlined]}>
+              {followLabel}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.messageBtn}
+            onPress={async () => {
+              const convId = await getOrCreateConversation(currentUserId, targetUserId);
+              router.push(`/messages/${convId}`);
+            }}
+            testID="message-btn"
+          >
+            <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
         {/* Shelf counts or private label */}
         {canSeeShelf ? (

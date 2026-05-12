@@ -38,6 +38,32 @@ export async function updatePrivacy(userId: string, isPrivate: boolean): Promise
   if (error) throw error;
 }
 
+export async function updateUsername(userId: string, username: string): Promise<string | null> {
+  const clean = username.trim().toLowerCase();
+
+  if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+    return 'Username must be 3–20 characters and can only contain letters, numbers, and underscores.';
+  }
+
+  // Check availability
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', clean)
+    .neq('id', userId)
+    .maybeSingle();
+
+  if (existing) return 'That username is already taken.';
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ username: clean })
+    .eq('id', userId);
+
+  if (error) return error.message;
+  return null; // null = success
+}
+
 export async function updateDisplayName(userId: string, displayName: string): Promise<void> {
   const { error } = await supabase
     .from('profiles')

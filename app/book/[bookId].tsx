@@ -13,6 +13,7 @@ import {
   Alert,
   Modal,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +23,7 @@ import { useAuth } from '@/lib/auth';
 import StarRating from '@/components/StarRating';
 import RatingModal from '@/components/RatingModal';
 import { getUserBook, addToShelf, moveShelf, removeFromShelf, rateBook, updateReadDates, updateFormat, type UserBookWithBook, type BookFormat } from '@/lib/userBooks';
-import { getBookById, getBookReviews, updatePageCount, updateCoverUrl, updateBookGenres, searchGoogleImages, refreshBookGenres, refreshBookSeries, type BookDetails, type FriendReview, type SeededReview } from '@/lib/books';
+import { getBookById, getBookReviews, getSimilarBooks, updatePageCount, updateCoverUrl, updateBookGenres, searchGoogleImages, refreshBookGenres, refreshBookSeries, type BookDetails, type BookSummary, type FriendReview, type SeededReview, type RatingBreakdown } from '@/lib/books';
 import { createEvent } from '@/lib/activity';
 import { getReadingSessions, updateSession, deleteSession, type ReadingSession } from '@/lib/sessions';
 import { Shelf } from '@/types/database';
@@ -42,6 +43,9 @@ export default function BookDetailScreen() {
   const [userBook, setUserBook] = useState<UserBookWithBook | null>(null);
   const [friendReviews, setFriendReviews] = useState<FriendReview[]>([]);
   const [topReviews, setTopReviews] = useState<SeededReview[]>([]);
+  const [communityReviews, setCommunityReviews] = useState<FriendReview[]>([]);
+  const [ratingBreakdown, setRatingBreakdown] = useState<RatingBreakdown>({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
+  const [reviewSort, setReviewSort] = useState<'helpful' | 'recent'>('helpful');
   const [loading, setLoading] = useState(true);
   const [descExpanded, setDescExpanded] = useState(false);
   const [shareConfirmed, setShareConfirmed] = useState(false);
@@ -61,6 +65,7 @@ export default function BookDetailScreen() {
   const [sessionDate, setSessionDate] = useState(new Date());
   const [sessionDatePickerVisible, setSessionDatePickerVisible] = useState(false);
   const [savingSession, setSavingSession] = useState(false);
+  const [similarBooks, setSimilarBooks] = useState<BookSummary[]>([]);
   const [coverSearchVisible, setCoverSearchVisible] = useState(false);
   const [coverQuery, setCoverQuery] = useState('');
   const [coverResults, setCoverResults] = useState<string[]>([]);
@@ -89,6 +94,10 @@ export default function BookDetailScreen() {
                 .then((refreshed) => { if (refreshed) setBook(refreshed); })
                 .catch(() => {});
             }
+            // Load similar books using bookData directly to avoid race conditions
+            getSimilarBooks(bookId, userId, bookData.genres ?? [])
+              .then(setSimilarBooks)
+              .catch(() => {});
           }
         })
         .catch(() => setLoading(false));
@@ -99,9 +108,11 @@ export default function BookDetailScreen() {
   useEffect(() => {
     if (!bookId || !userId) return;
     getBookReviews(bookId, userId)
-      .then(({ friendReviews, topReviews }) => {
+      .then(({ friendReviews, topReviews, communityReviews, ratingBreakdown }) => {
         setFriendReviews(friendReviews);
         setTopReviews(topReviews);
+        setCommunityReviews(communityReviews);
+        setRatingBreakdown(ratingBreakdown);
       })
       .catch(() => {});
   }, [bookId, userId]);
@@ -113,6 +124,50 @@ export default function BookDetailScreen() {
       .then(setReadingSessions)
       .catch(() => {});
   }, [bookId, userId]);
+
+  const breakdownTotal = useMemo(
+    () => Object.values(ratingBreakdown).reduce((s, n) => s + n, 0),
+    [ratingBreakdown]
+  );
+
+  // Unified sorted review list — app user reviews first, then seeded
+  const allReviews = useMemo(() => {
+    type UserReviewItem = {
+      kind: 'user'; key: string; userId: string; username: string;
+      avatarUrl: string | null; rating: number | null; text: string; date: string | null;
+      helpfulVotes: number;
+    };
+    type SeededReviewItem = {
+      kind: 'seeded'; key: string; name: string;
+      rating: number | null; text: string; date: string | null; helpfulVotes: number;
+    };
+    type ReviewItem = UserReviewItem | SeededReviewItem;
+
+    const userItems: ReviewItem[] = [
+      ...friendReviews.map((r, i): UserReviewItem => ({
+        kind: 'user', key: `friend-${i}`, userId: r.userId, username: r.username,
+        avatarUrl: r.avatarUrl, rating: r.rating, text: r.review, date: r.finishedAt,
+        helpfulVotes: 0,
+      })),
+      ...communityReviews.map((r, i): UserReviewItem => ({
+        kind: 'user', key: `community-${i}`, userId: r.userId, username: r.username,
+        avatarUrl: r.avatarUrl, rating: r.rating, text: r.review, date: r.finishedAt,
+        helpfulVotes: 0,
+      })),
+    ];
+
+    const seededItems: ReviewItem[] = topReviews.map((r): SeededReviewItem => ({
+      kind: 'seeded', key: r.id, name: r.reviewerName ?? 'Anonymous',
+      rating: r.rating, text: r.body, date: r.dateAdded ?? null, helpfulVotes: r.helpfulVotes ?? 0,
+    }));
+
+    const sortFn = (a: ReviewItem, b: ReviewItem) =>
+      reviewSort === 'helpful'
+        ? b.helpfulVotes - a.helpfulVotes
+        : (b.date ?? '').localeCompare(a.date ?? '');
+
+    return [...userItems.sort(sortFn), ...seededItems.sort(sortFn)];
+  }, [friendReviews, communityReviews, topReviews, reviewSort]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -375,6 +430,31 @@ export default function BookDetailScreen() {
       marginTop: 4,
     },
 
+    similarRow: { gap: Spacing.md, paddingVertical: 4 },
+    similarCard: { width: 110, gap: 6 },
+    similarCover: { width: 110, height: 160, borderRadius: Radius.md },
+    similarCoverPlaceholder: {
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    similarTitle: { fontSize: 12, fontFamily: Fonts.semiBold, color: colors.textPrimary, lineHeight: 16 },
+    similarAuthor: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textSecondary },
+
+    sessionSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    addSessionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    addSessionBtnText: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.primary },
     sessionCard: {
       backgroundColor: colors.surface,
       borderRadius: Radius.md,
@@ -391,6 +471,43 @@ export default function BookDetailScreen() {
     sessionDate: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textPrimary },
     sessionMeta: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary, marginTop: 2 },
     sessionDuration: { fontSize: 13, fontFamily: Fonts.medium, color: colors.primary },
+
+    ratingHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.lg,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      ...Shadow.card,
+    },
+    ratingBig: { fontSize: 48, fontFamily: Fonts.bold, color: colors.textPrimary, lineHeight: 56 },
+    ratingSummaryRight: { flex: 1, gap: 4 },
+    ratingSummaryStars: { fontSize: 18, color: colors.primary, letterSpacing: 2 },
+    ratingsCount: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
+
+    breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 4 },
+    breakdownLabel: { fontSize: 12, fontFamily: Fonts.medium, color: colors.textSecondary, width: 20, textAlign: 'right' },
+    breakdownBarBg: { flex: 1, height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
+    breakdownBarFill: { height: 6, backgroundColor: colors.primary, borderRadius: 3 },
+    breakdownCount: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textTertiary, width: 24, textAlign: 'right' },
+
+    sortRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: 4 },
+    sortBtn: {
+      borderRadius: Radius.xl, paddingHorizontal: 14, paddingVertical: 6,
+      borderWidth: 1.5, borderColor: colors.border,
+    },
+    sortBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    sortBtnText: { fontSize: 13, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    sortBtnTextActive: { color: colors.surface },
+
+    reviewFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+    reviewDate: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textTertiary },
+    reviewHelpful: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textTertiary },
+
+    reviewAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    reviewAvatar: { width: 28, height: 28, borderRadius: 14 },
+    reviewAvatarInitial: { fontSize: 12, fontFamily: Fonts.bold, color: colors.surface },
 
     sessionEditBody: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.lg },
     sessionEditRow: {
@@ -445,11 +562,16 @@ export default function BookDetailScreen() {
         const s = SHELF_KEYS[buttonIndex];
         if (!s) return;
         try {
-          await addToShelf(userId, bookId, s);
-          const updated = await getUserBook(userId, bookId);
-          setUserBook(updated);
+          if (s === 'remove') {
+            if (userBook) await removeFromShelf(userBook.id);
+            setUserBook(null);
+          } else {
+            await addToShelf(userId, bookId, s);
+            const updated = await getUserBook(userId, bookId);
+            setUserBook(updated);
+          }
         } catch {
-          Alert.alert('Error', 'Could not add book. Please try again.');
+          Alert.alert('Error', 'Could not update book. Please try again.');
         }
       }
     );
@@ -661,7 +783,16 @@ export default function BookDetailScreen() {
         <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Book header */}
         <View style={styles.bookHeader}>
           <TouchableOpacity onPress={openCoverSearch} style={styles.coverWrapper}>
@@ -965,10 +1096,46 @@ export default function BookDetailScreen() {
           </View>
         ) : null}
 
-        {/* Reading Sessions */}
-        {readingSessions.length > 0 && (
+        {/* More Like This */}
+        {similarBooks.length > 0 && (
           <View>
-            <Text style={styles.sectionTitle}>Reading Sessions</Text>
+            <Text style={styles.sectionTitle}>More Like This</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.similarRow}>
+              {similarBooks.map(b => (
+                <TouchableOpacity
+                  key={b.id}
+                  style={styles.similarCard}
+                  onPress={() => router.push(`/book/${b.id}`)}
+                  activeOpacity={0.8}
+                >
+                  {b.cover_url ? (
+                    <Image source={{ uri: b.cover_url }} style={styles.similarCover} />
+                  ) : (
+                    <View style={[styles.similarCover, styles.similarCoverPlaceholder]}>
+                      <Ionicons name="book-outline" size={28} color={colors.textTertiary} />
+                    </View>
+                  )}
+                  <Text style={styles.similarTitle} numberOfLines={2}>{b.title}</Text>
+                  <Text style={styles.similarAuthor} numberOfLines={1}>{b.author}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Reading Sessions */}
+        {(readingSessions.length > 0 || userBook) && (
+          <View>
+            <View style={styles.sessionSectionHeader}>
+              <Text style={styles.sectionTitle}>Reading Sessions</Text>
+              <TouchableOpacity
+                onPress={() => router.push(`/session/manual?bookId=${bookId}`)}
+                style={styles.addSessionBtn}
+              >
+                <Ionicons name="add" size={16} color={colors.primary} />
+                <Text style={styles.addSessionBtnText}>Add</Text>
+              </TouchableOpacity>
+            </View>
             {readingSessions.map((s) => {
               const pagesRead = s.end_page - s.start_page;
               const mins = Math.round(s.duration_seconds / 60);
@@ -998,52 +1165,122 @@ export default function BookDetailScreen() {
         )}
 
         {/* Reviews */}
-        {(friendReviews.length > 0 || topReviews.length > 0) && (
-          <View>
+        {(friendReviews.length > 0 || communityReviews.length > 0 || topReviews.length > 0) && (
+          <View style={{ gap: Spacing.md }}>
             <Text style={styles.sectionTitle}>Reviews</Text>
 
-            {friendReviews.length > 0 && (
-              <View>
-                <Text style={styles.reviewSubheader}>From your friends</Text>
-                {friendReviews.map((r, i) => (
-                  <View key={i} style={styles.reviewCard} testID={`friend-review-${i}`}>
-                    <View style={styles.reviewHeader}>
-                      <Text style={styles.reviewUsername}>{r.username}</Text>
-                      {r.rating !== null && (
-                        <Text style={styles.reviewRating}>
-                          {'★'.repeat(Math.min(5, Math.max(0, Math.round(r.rating))))}
-                          {'☆'.repeat(5 - Math.min(5, Math.max(0, Math.round(r.rating))))}
-                        </Text>
-                      )}
+            {/* Rating summary + breakdown */}
+            {(book as any).rating != null && (
+              <View style={styles.ratingHeader}>
+                <Text style={styles.ratingBig}>{Number((book as any).rating).toFixed(1)}</Text>
+                <View style={styles.ratingSummaryRight}>
+                  <Text style={styles.ratingSummaryStars}>
+                    {'★'.repeat(Math.round((book as any).rating))}{'☆'.repeat(5 - Math.round((book as any).rating))}
+                  </Text>
+                  {(book as any).ratings_count != null && (
+                    <Text style={styles.ratingsCount}>
+                      {Number((book as any).ratings_count).toLocaleString()} ratings
+                    </Text>
+                  )}
+                  {breakdownTotal > 0 && (
+                    <View style={{ marginTop: 6 }}>
+                      {([5, 4, 3, 2, 1] as const).map(star => {
+                        const count = ratingBreakdown[star];
+                        const pct = breakdownTotal > 0 ? count / breakdownTotal : 0;
+                        return (
+                          <View key={star} style={styles.breakdownRow}>
+                            <Text style={styles.breakdownLabel}>{star}★</Text>
+                            <View style={styles.breakdownBarBg}>
+                              <View style={[styles.breakdownBarFill, { width: `${Math.round(pct * 100)}%` }]} />
+                            </View>
+                            <Text style={styles.breakdownCount}>{count}</Text>
+                          </View>
+                        );
+                      })}
                     </View>
-                    <Text style={styles.reviewText}>{r.review}</Text>
-                  </View>
-                ))}
+                  )}
+                </View>
               </View>
             )}
 
-            {topReviews.length > 0 && (
-              <View>
-                <Text style={styles.reviewSubheader}>GoodReads reviews</Text>
-                {topReviews.map((r) => (
-                  <View key={r.id} style={styles.reviewCard} testID={`seeded-review-${r.id}`}>
-                    <View style={styles.reviewHeader}>
-                      <Text style={styles.reviewUsername}>{r.reviewerName ?? 'Anonymous'}</Text>
-                      {r.rating !== null && (
-                        <Text style={styles.reviewRating}>
-                          {'★'.repeat(Math.min(5, Math.max(0, Math.round(r.rating))))}
-                          {'☆'.repeat(5 - Math.min(5, Math.max(0, Math.round(r.rating))))}
-                        </Text>
-                      )}
+            {/* Sort toggle + unified review list */}
+            {allReviews.length > 0 && (
+              <View style={{ gap: Spacing.sm }}>
+                <View style={styles.sortRow}>
+                  {(['helpful', 'recent'] as const).map(s => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.sortBtn, reviewSort === s && styles.sortBtnActive]}
+                      onPress={() => setReviewSort(s)}
+                    >
+                      <Text style={[styles.sortBtnText, reviewSort === s && styles.sortBtnTextActive]}>
+                        {s === 'helpful' ? 'Most Helpful' : 'Most Recent'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {allReviews.map((r) => {
+                  const stars = r.rating !== null ? (
+                    <Text style={styles.reviewRating}>
+                      {'★'.repeat(Math.min(5, Math.max(0, Math.round(r.rating))))}
+                      {'☆'.repeat(5 - Math.min(5, Math.max(0, Math.round(r.rating))))}
+                    </Text>
+                  ) : null;
+                  const dateStr = r.date
+                    ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    : null;
+
+                  if (r.kind === 'user') {
+                    return (
+                      <TouchableOpacity
+                        key={r.key}
+                        style={styles.reviewCard}
+                        onPress={() => router.push(`/user/${r.userId}`)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewAuthorRow}>
+                            {r.avatarUrl ? (
+                              <Image source={{ uri: r.avatarUrl }} style={styles.reviewAvatar} />
+                            ) : (
+                              <View style={[styles.reviewAvatar, { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }]}>
+                                <Text style={styles.reviewAvatarInitial}>{r.username.charAt(0).toUpperCase()}</Text>
+                              </View>
+                            )}
+                            <Text style={styles.reviewUsername}>{r.username}</Text>
+                          </View>
+                          {stars}
+                        </View>
+                        <Text style={styles.reviewText}>{r.text}</Text>
+                        {dateStr && (
+                          <View style={styles.reviewFooter}>
+                            <Text style={styles.reviewDate}>Finished {dateStr}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  }
+
+                  return (
+                    <View key={r.key} style={styles.reviewCard}>
+                      <View style={styles.reviewHeader}>
+                        <Text style={styles.reviewUsername}>{r.name}</Text>
+                        {stars}
+                      </View>
+                      <Text style={styles.reviewText}>{r.text}</Text>
+                      <View style={styles.reviewFooter}>
+                        {dateStr && <Text style={styles.reviewDate}>{dateStr}</Text>}
+                        {r.helpfulVotes > 0 && <Text style={styles.reviewHelpful}>{r.helpfulVotes} helpful</Text>}
+                      </View>
                     </View>
-                    <Text style={styles.reviewText}>{r.body}</Text>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
       {/* Cover Image Search Modal */}
       <Modal visible={coverSearchVisible} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.coverModal}>

@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -84,9 +85,17 @@ export default function ClubsScreen() {
       backgroundColor: colors.surface,
       borderRadius: Radius.lg,
       padding: Spacing.md,
-      gap: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
       ...Shadow.card,
     },
+    cover: { width: 52, height: 76, borderRadius: Radius.sm },
+    coverPlaceholder: {
+      width: 52, height: 76, borderRadius: Radius.sm,
+      backgroundColor: colors.border,
+    },
+    cardInfo: { flex: 1, gap: 4 },
     clubName: { fontSize: 16, fontFamily: Fonts.bold, color: colors.textPrimary },
     currentBook: { fontSize: 14, fontFamily: Fonts.regular, color: colors.primary },
     noBook: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textTertiary },
@@ -163,13 +172,20 @@ export default function ClubsScreen() {
               onPress={() => router.push(`/club/${item.id}`)}
               testID={`club-card-${item.id}`}
             >
-              <Text style={styles.clubName}>{item.name}</Text>
-              {item.currentBookTitle ? (
-                <Text style={styles.currentBook}>{item.currentBookTitle}</Text>
+              {item.currentBookCoverUrl ? (
+                <Image source={{ uri: item.currentBookCoverUrl }} style={styles.cover} />
               ) : (
-                <Text style={styles.noBook}>No book selected</Text>
+                <View style={styles.coverPlaceholder} />
               )}
-              <Text style={styles.memberCount}>{item.memberCount} members</Text>
+              <View style={styles.cardInfo}>
+                <Text style={styles.clubName}>{item.name}</Text>
+                {item.currentBookTitle ? (
+                  <Text style={styles.currentBook} numberOfLines={2}>{item.currentBookTitle}</Text>
+                ) : (
+                  <Text style={styles.noBook}>No book selected</Text>
+                )}
+                <Text style={styles.memberCount}>{item.memberCount} members</Text>
+              </View>
             </TouchableOpacity>
           )}
         />

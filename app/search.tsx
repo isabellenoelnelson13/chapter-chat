@@ -185,17 +185,25 @@ export default function SearchScreen() {
             )}
           </TouchableOpacity>
         )}
+        ListFooterComponent={
+          !searching && hasSearched && query.trim() !== '' ? (
+            <TouchableOpacity
+              style={styles.addManuallyBtn}
+              onPress={() => router.push(`/add-book?title=${encodeURIComponent(query.trim())}`)}
+            >
+              <Text style={styles.addManuallyText}>
+                {results.length === 0
+                  ? `+ Add "${query.trim()}" manually`
+                  : "Can't find it? Add manually"}
+              </Text>
+            </TouchableOpacity>
+          ) : null
+        }
       />
 
       {!searching && hasSearched && query.trim() !== '' && results.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No results found</Text>
-          <TouchableOpacity
-            style={styles.addManuallyBtn}
-            onPress={() => router.push(`/add-book?title=${encodeURIComponent(query.trim())}`)}
-          >
-            <Text style={styles.addManuallyText}>+ Add "{query.trim()}" manually</Text>
-          </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>

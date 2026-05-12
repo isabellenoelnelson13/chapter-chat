@@ -24,8 +24,14 @@ import {
   getPosts,
   addPost,
   deleteClub,
+  getSuggestions,
+  addSuggestion,
+  removeSuggestion,
+  voteSuggestion,
+  unvoteSuggestion,
   type ClubDetail,
   type ClubPost,
+  type ClubSuggestion,
 } from '@/lib/clubs';
 import { searchUsers, type UserSearchResult } from '@/lib/follows';
 import { searchBooks, upsertBook, type BookSearchResult } from '@/lib/books';
@@ -47,6 +53,7 @@ export default function ClubDetailScreen() {
 
   const [club, setClub] = useState<ClubDetail | null>(null);
   const [posts, setPosts] = useState<ClubPost[]>([]);
+  const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showPostModal, setShowPostModal] = useState(false);
@@ -60,13 +67,18 @@ export default function ClubDetailScreen() {
   const [bookSearch, setBookSearch] = useState('');
   const [bookResults, setBookResults] = useState<BookSearchResult[]>([]);
 
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [suggestSearch, setSuggestSearch] = useState('');
+  const [suggestResults, setSuggestResults] = useState<BookSearchResult[]>([]);
+
   const loadData = useCallback(() => {
     if (!clubId) return;
     setLoading(true);
-    Promise.all([getClub(clubId), getPosts(clubId)])
-      .then(([clubData, postsData]) => {
+    Promise.all([getClub(clubId), getPosts(clubId), getSuggestions(clubId, userId)])
+      .then(([clubData, postsData, suggestionsData]) => {
         setClub(clubData);
         setPosts(postsData);
+        setSuggestions(suggestionsData);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -159,6 +171,67 @@ export default function ClubDetailScreen() {
         },
       ]
     );
+  };
+
+  const handleSuggestSearch = async (query: string) => {
+    setSuggestSearch(query);
+    if (!query.trim()) { setSuggestResults([]); return; }
+    const results = await searchBooks(query.trim());
+    setSuggestResults(results);
+  };
+
+  const handleAddSuggestion = async (book: BookSearchResult) => {
+    try {
+      const bookId = await upsertBook(book);
+      await addSuggestion(clubId, bookId, userId);
+      setShowSuggestModal(false);
+      setSuggestSearch('');
+      setSuggestResults([]);
+      const updated = await getSuggestions(clubId, userId);
+      setSuggestions(updated);
+    } catch (e: any) {
+      if (e?.message?.includes('unique')) {
+        Alert.alert('Already suggested', 'That book has already been suggested.');
+      } else {
+        Alert.alert('Error', 'Could not add suggestion.');
+      }
+    }
+  };
+
+  const handleVote = async (suggestion: ClubSuggestion) => {
+    setSuggestions(prev => prev.map(s =>
+      s.id === suggestion.id
+        ? { ...s, votedByMe: !s.votedByMe, voteCount: s.voteCount + (s.votedByMe ? -1 : 1) }
+        : s
+    ).sort((a, b) => b.voteCount - a.voteCount));
+    if (suggestion.votedByMe) {
+      await unvoteSuggestion(suggestion.id, userId);
+    } else {
+      await voteSuggestion(suggestion.id, userId);
+    }
+  };
+
+  const handleRemoveSuggestion = (suggestion: ClubSuggestion) => {
+    Alert.alert('Remove suggestion', `Remove "${suggestion.bookTitle}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove', style: 'destructive',
+        onPress: async () => {
+          await removeSuggestion(suggestion.id);
+          setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+        },
+      },
+    ]);
+  };
+
+  const handleSelectSuggestion = async (suggestion: ClubSuggestion) => {
+    try {
+      await setCurrentBook(clubId, suggestion.bookId, userId);
+      await removeSuggestion(suggestion.id);
+      loadData();
+    } catch {
+      Alert.alert('Error', 'Could not set current book.');
+    }
   };
 
   const handleSubmitPost = async () => {
@@ -323,6 +396,36 @@ export default function ClubDetailScreen() {
     },
     searchResultText: { fontSize: 15, fontFamily: Fonts.semiBold, color: colors.textPrimary },
     searchResultSub: { fontSize: 13, fontFamily: Fonts.regular, color: colors.textSecondary },
+    suggestionCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      alignItems: 'center',
+      ...Shadow.card,
+    },
+    suggestionCover: { width: 44, height: 64, borderRadius: Radius.sm },
+    suggestionCoverPlaceholder: { width: 44, height: 64, borderRadius: Radius.sm, backgroundColor: colors.border },
+    suggestionInfo: { flex: 1, gap: 2 },
+    suggestionTitle: { fontSize: 14, fontFamily: Fonts.semiBold, color: colors.textPrimary },
+    suggestionAuthor: { fontSize: 12, fontFamily: Fonts.regular, color: colors.textSecondary },
+    suggestionBy: { fontSize: 11, fontFamily: Fonts.regular, color: colors.textTertiary },
+    suggestionActions: { alignItems: 'center', gap: 6 },
+    voteBtn: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 40, height: 40,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+    },
+    voteBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    voteCount: { fontSize: 12, fontFamily: Fonts.semiBold, color: colors.textSecondary },
+    suggestionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.sm },
+    suggestLinkText: { color: colors.primary, fontFamily: Fonts.semiBold, fontSize: 14 },
+    selectBtn: { paddingVertical: 3, paddingHorizontal: 8, backgroundColor: colors.primary, borderRadius: Radius.sm },
+    selectBtnText: { color: colors.surface, fontSize: 11, fontFamily: Fonts.semiBold },
     deleteBtn: {
       borderWidth: 1.5,
       borderColor: colors.error,
@@ -423,6 +526,53 @@ export default function ClubDetailScreen() {
               </TouchableOpacity>
             )}
           </View>
+        )}
+
+        {/* Book Suggestions */}
+        <View style={styles.suggestionHeaderRow}>
+          <Text style={styles.sectionTitle}>Suggestions</Text>
+          <TouchableOpacity onPress={() => setShowSuggestModal(true)}>
+            <Text style={styles.suggestLinkText}>+ Suggest</Text>
+          </TouchableOpacity>
+        </View>
+        {suggestions.length === 0 ? (
+          <Text style={styles.emptyText}>No suggestions yet.</Text>
+        ) : (
+          suggestions.map(s => (
+            <View key={s.id} style={styles.suggestionCard}>
+              {s.bookCoverUrl ? (
+                <Image source={{ uri: s.bookCoverUrl }} style={styles.suggestionCover} />
+              ) : (
+                <View style={styles.suggestionCoverPlaceholder} />
+              )}
+              <View style={styles.suggestionInfo}>
+                <Text style={styles.suggestionTitle} numberOfLines={2}>{s.bookTitle}</Text>
+                <Text style={styles.suggestionAuthor} numberOfLines={1}>{s.bookAuthor}</Text>
+                <Text style={styles.suggestionBy}>by @{s.suggestedByUsername}</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                  {isOwner && (
+                    <TouchableOpacity style={styles.selectBtn} onPress={() => handleSelectSuggestion(s)}>
+                      <Text style={styles.selectBtnText}>Select</Text>
+                    </TouchableOpacity>
+                  )}
+                  {(isOwner || s.suggestedBy === userId) && (
+                    <TouchableOpacity onPress={() => handleRemoveSuggestion(s)}>
+                      <Ionicons name="trash-outline" size={15} color={colors.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+              <View style={styles.suggestionActions}>
+                <TouchableOpacity
+                  style={[styles.voteBtn, s.votedByMe && styles.voteBtnActive]}
+                  onPress={() => handleVote(s)}
+                >
+                  <Ionicons name="chevron-up" size={18} color={s.votedByMe ? colors.surface : colors.textSecondary} />
+                </TouchableOpacity>
+                <Text style={styles.voteCount}>{s.voteCount}</Text>
+              </View>
+            </View>
+          ))
         )}
 
         {club.history.length > 0 && (
@@ -565,6 +715,49 @@ export default function ClubDetailScreen() {
                 style={styles.bookSearchResult}
                 onPress={() => handleSetBook(b)}
                 testID={`book-result-${b.hardcover_id}`}
+              >
+                {b.cover_url ? (
+                  <Image source={{ uri: b.cover_url }} style={styles.bookSearchCover} />
+                ) : (
+                  <View style={styles.bookSearchCoverPlaceholder} />
+                )}
+                <View style={styles.bookSearchInfo}>
+                  <Text style={styles.searchResultText} numberOfLines={2}>{b.title}</Text>
+                  <Text style={styles.searchResultSub}>{b.author}</Text>
+                  {!!b.page_count && (
+                    <Text style={styles.searchResultPages}>{b.page_count} pages</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </SafeAreaView>
+      </Modal>
+      {/* Suggest a book modal */}
+      <Modal visible={showSuggestModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modal}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Suggest a Book</Text>
+            <TouchableOpacity onPress={() => { setShowSuggestModal(false); setSuggestSearch(''); setSuggestResults([]); }}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalBody}>
+            <TextInput
+              style={styles.input}
+              placeholder="Search books..."
+              placeholderTextColor={colors.textTertiary}
+              value={suggestSearch}
+              onChangeText={handleSuggestSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+            />
+            {suggestResults.map((b) => (
+              <TouchableOpacity
+                key={b.hardcover_id}
+                style={styles.bookSearchResult}
+                onPress={() => handleAddSuggestion(b)}
               >
                 {b.cover_url ? (
                   <Image source={{ uri: b.cover_url }} style={styles.bookSearchCover} />

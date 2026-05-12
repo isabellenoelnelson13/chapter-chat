@@ -93,6 +93,9 @@ function RootLayoutNav() {
       <Stack.Screen name="notifications-inbox" />
       <Stack.Screen name="quick-log" options={{ presentation: 'modal' }} />
       <Stack.Screen name="series/[seriesId]" />
+      <Stack.Screen name="messages/index" />
+      <Stack.Screen name="messages/[conversationId]" />
+      <Stack.Screen name="add-book" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

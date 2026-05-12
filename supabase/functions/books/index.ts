@@ -79,6 +79,22 @@ const REVIEWS_QUERY = `
   }
 `;
 
+const ISBN_QUERY = `
+  query BookByISBN($isbn: String!) {
+    books(
+      where: {
+        _or: [
+          { editions: { isbn_13: { _eq: $isbn } } }
+          { editions: { isbn_10: { _eq: $isbn } } }
+        ]
+      }
+      limit: 1
+    ) {
+      ${BOOK_FIELDS}
+    }
+  }
+`;
+
 const TRENDING_SINCE_QUERY = `
   query TrendingSince($limit: Int!, $since: date!) {
     books(
@@ -186,7 +202,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, query, period, hardcover_id, series_id, limit = 20 } = await req.json();
+    const { action, query, period, hardcover_id, series_id, isbn, limit = 20 } = await req.json();
     const apiKey = Deno.env.get('HARDCOVER_API_KEY') ?? '';
 
     if (!apiKey) {
@@ -198,7 +214,14 @@ serve(async (req) => {
 
     let books: BookResult[];
 
-    if (action === 'search') {
+    if (action === 'isbn') {
+      const json = await queryHardcover(apiKey, ISBN_QUERY, { isbn: String(isbn ?? '') });
+      const b = json.data?.books?.[0];
+      const result = b ? normalizeBook(b) : null;
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else if (action === 'search') {
       const json = await queryHardcover(apiKey, SEARCH_QUERY, {
         query: String(query ?? ''),
         per_page: Number(limit),
