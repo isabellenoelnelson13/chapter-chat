@@ -5,9 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  SectionList,
   Image,
   ActivityIndicator,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,6 +25,8 @@ import { Shelf } from '@/types/database';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 import StarRating from '@/components/StarRating';
+import { curateReadingList } from '@/lib/agents/curator';
+import { CuratorResult, CuratorGroup } from '@/lib/agents/types';
 
 const SHELVES: { key: Shelf; label: string }[] = [
   { key: 'reading', label: 'Reading' },
@@ -40,7 +47,34 @@ export default function LibraryScreen() {
   const [sortOrder, setSortOrder] = useState<'recent' | 'alpha'>('recent');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [curatorResult, setCuratorResult] = useState<CuratorResult | null>(null);
+  const [curatorLoading, setCuratorLoading] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+
   const userId = session?.user.id ?? '';
+
+  useEffect(() => {
+    if (activeShelf !== 'want') setCuratorResult(null);
+  }, [activeShelf]);
+
+  const bookMap = useMemo(
+    () => new Map(books.map((b) => [b.book_id, b])),
+    [books]
+  );
+
+  async function handleCurate() {
+    setShowGoalModal(false);
+    setCuratorLoading(true);
+    try {
+      const result = await curateReadingList(userId, goalInput.trim() || undefined);
+      setCuratorResult(result);
+    } catch {
+      setCuratorResult(null);
+    } finally {
+      setCuratorLoading(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -152,6 +186,88 @@ export default function LibraryScreen() {
     list: { paddingHorizontal: Spacing.lg, paddingBottom: tabBarHeight, gap: Spacing.sm },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { color: colors.textSecondary, fontSize: 15, fontFamily: Fonts.regular },
+
+    aiBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.primary,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 6,
+      borderRadius: Radius.xl,
+    },
+    aiBtnText: { color: colors.surface, fontSize: 13, fontFamily: Fonts.semiBold },
+
+    summaryBanner: {
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      ...Shadow.card,
+    },
+    summaryText: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular, lineHeight: 19 },
+
+    sectionHeader: {
+      fontSize: 13,
+      fontFamily: Fonts.semiBold,
+      color: colors.textTertiary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.xs,
+    },
+
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: 'flex-end',
+    },
+    modalSheetWrapper: { justifyContent: 'flex-end' },
+    modalSheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: Radius.xl,
+      borderTopRightRadius: Radius.xl,
+      padding: Spacing.lg,
+      paddingBottom: Spacing.xl,
+      gap: Spacing.md,
+    },
+    modalHandle: {
+      width: 36,
+      height: 4,
+      backgroundColor: colors.border,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: Spacing.sm,
+    },
+    modalTitle: { fontSize: 18, fontFamily: Fonts.bold, color: colors.textPrimary },
+    modalSubtitle: { fontSize: 14, fontFamily: Fonts.regular, color: colors.textSecondary, lineHeight: 20 },
+    goalInput: {
+      backgroundColor: colors.background,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 12,
+      fontSize: 15,
+      fontFamily: Fonts.regular,
+      color: colors.textPrimary,
+    },
+    modalActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+    modalCancel: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      backgroundColor: colors.border,
+      alignItems: 'center',
+    },
+    modalCancelText: { fontFamily: Fonts.semiBold, fontSize: 15, color: colors.textSecondary },
+    modalConfirm: {
+      flex: 2,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+    },
+    modalConfirmText: { fontFamily: Fonts.semiBold, fontSize: 15, color: colors.surface },
   }), [colors, tabBarHeight]);
 
   if (!session) return null;
@@ -202,27 +318,89 @@ export default function LibraryScreen() {
         )}
       </View>
 
-      {/* Sort controls */}
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>Sort:</Text>
-        <TouchableOpacity
-          style={[styles.sortBtn, sortOrder === 'recent' && styles.sortBtnActive]}
-          onPress={() => setSortOrder('recent')}
-        >
-          <Text style={[styles.sortBtnText, sortOrder === 'recent' && styles.sortBtnTextActive]}>Recent</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
-          onPress={() => setSortOrder('alpha')}
-        >
-          <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A–Z</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Sort controls / AI button */}
+      {activeShelf === 'want' && curatorResult ? (
+        <View style={styles.sortRow}>
+          <Ionicons name="sparkles" size={14} color={colors.primary} />
+          <Text style={[styles.sortLabel, { color: colors.primary, flex: 1 }]}>Organized by AI</Text>
+          <TouchableOpacity onPress={() => { setCuratorResult(null); setGoalInput(''); }}>
+            <Text style={[styles.sortBtnText, { color: colors.textSecondary }]}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.sortRow}>
+          {activeShelf !== 'want' && (
+            <>
+              <Text style={styles.sortLabel}>Sort:</Text>
+              <TouchableOpacity
+                style={[styles.sortBtn, sortOrder === 'recent' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('recent')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'recent' && styles.sortBtnTextActive]}>Recent</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('alpha')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A–Z</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {activeShelf === 'want' && (
+            <TouchableOpacity
+              style={styles.aiBtn}
+              onPress={() => setShowGoalModal(true)}
+              disabled={curatorLoading || books.length === 0}
+            >
+              {curatorLoading ? (
+                <ActivityIndicator size="small" color={colors.surface} />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={14} color={colors.surface} />
+                  <Text style={styles.aiBtnText}>Organize with AI</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
-      {loading ? (
+      {/* AI summary banner */}
+      {activeShelf === 'want' && curatorResult?.summary && (
+        <View style={styles.summaryBanner}>
+          <Text style={styles.summaryText}>{curatorResult.summary}</Text>
+        </View>
+      )}
+
+      {loading || curatorLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
+      ) : activeShelf === 'want' && curatorResult ? (
+        <SectionList
+          sections={curatorResult.groups.map((g: CuratorGroup) => ({
+            title: g.label,
+            data: g.books,
+          }))}
+          keyExtractor={(item) => item.bookId}
+          contentContainerStyle={styles.list}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => {
+            const full = bookMap.get(item.bookId);
+            if (!full) return null;
+            return (
+              <TouchableOpacity onPress={() => router.push(`/book/${item.bookId}`)}>
+                <BookCard book={full} shelf="want" />
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>Nothing to organize yet</Text>
+          }
+          stickySectionHeadersEnabled={false}
+        />
       ) : (
         <FlatList
           data={filteredBooks}
@@ -240,6 +418,50 @@ export default function LibraryScreen() {
           }
         />
       )}
+
+      {/* Goal input modal */}
+      <Modal
+        visible={showGoalModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGoalModal(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowGoalModal(false)}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalSheetWrapper}
+          >
+            <Pressable style={styles.modalSheet} onPress={() => {}}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>Organize your reading list</Text>
+              <Text style={styles.modalSubtitle}>
+                Add a reading goal to prioritize what comes first — or leave it blank to group by series, author, and genre.
+              </Text>
+              <TextInput
+                style={styles.goalInput}
+                placeholder="e.g. finish a series, read more nonfiction…"
+                placeholderTextColor={colors.textTertiary}
+                value={goalInput}
+                onChangeText={setGoalInput}
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleCurate}
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancel}
+                  onPress={() => setShowGoalModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalConfirm} onPress={handleCurate}>
+                  <Text style={styles.modalConfirmText}>Organize</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

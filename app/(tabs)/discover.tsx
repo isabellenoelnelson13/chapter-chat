@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/lib/auth';
 import { getTrending, getRecommended, type TrendingPeriod } from '@/lib/discover';
 import { upsertBook, type BookSearchResult } from '@/lib/books';
+import { type Recommendation } from '@/lib/agents/types';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
@@ -37,6 +38,7 @@ export default function DiscoverScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('trending');
   const [activePeriod, setActivePeriod] = useState<TrendingPeriod>('all_time');
   const [books, setBooks] = useState<BookSearchResult[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPersonalized, setIsPersonalized] = useState(false);
 
@@ -46,7 +48,7 @@ export default function DiscoverScreen() {
     try {
       if (activeTab === 'for_you') {
         const result = await getRecommended(userId);
-        setBooks(result.books);
+        setRecommendations(result.books);
         setIsPersonalized(result.personalized);
       } else {
         const results = await getTrending(activePeriod);
@@ -168,6 +170,13 @@ export default function DiscoverScreen() {
     cardTitle: { color: colors.textPrimary, fontSize: 15, fontFamily: Fonts.bookTitle },
     cardAuthor: { color: colors.textSecondary, fontSize: 13, fontFamily: Fonts.regular },
     cardMeta: { color: colors.textTertiary, fontSize: 12, fontFamily: Fonts.regular },
+    cardRationale: {
+      color: colors.primary,
+      fontSize: 12,
+      fontFamily: Fonts.regular,
+      fontStyle: 'italic',
+      lineHeight: 17,
+    },
   }), [colors]);
 
   if (!session) return null;
@@ -231,6 +240,40 @@ export default function DiscoverScreen() {
             Add some books to your library and we'll find recommendations for you.
           </Text>
         </View>
+      ) : activeTab === 'for_you' ? (
+        <FlatList
+          data={recommendations}
+          keyExtractor={(item) => item.hardcover_id}
+          contentContainerStyle={recommendations.length === 0 ? styles.emptyContainer : styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              testID={`book-card-${item.hardcover_id}`}
+              style={styles.card}
+              onPress={() => handleBookPress(item)}
+            >
+              {item.cover_url ? (
+                <Image source={{ uri: item.cover_url }} style={styles.cover} />
+              ) : (
+                <View style={styles.coverPlaceholder} />
+              )}
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={styles.cardAuthor}>{item.author}</Text>
+                {item.rating !== null && (
+                  <Text style={styles.cardMeta}>
+                    ★ {item.rating.toFixed(1)} · {item.users_read_count >= 1000 ? `${(item.users_read_count / 1000).toFixed(0)}k` : item.users_read_count} readers
+                  </Text>
+                )}
+                {item.rationale ? (
+                  <Text style={styles.cardRationale} numberOfLines={2}>{item.rationale}</Text>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No recommendations yet.</Text>
+          }
+        />
       ) : (
         <FlatList
           data={books}

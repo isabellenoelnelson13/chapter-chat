@@ -1,6 +1,6 @@
 # Chapter Chat
 
-> A full-stack social reading tracker built with React Native, Expo, and Supabase — featuring real-time messaging, a 2.3M-book catalog, social feeds, analytics dashboards, and native iOS widgets.
+> A full-stack social reading tracker built with React Native, Expo, and Supabase — featuring AI-powered recommendations and reading list curation, real-time messaging, a 2.3M-book catalog, social feeds, analytics dashboards, and native iOS widgets.
 
 ---
 
@@ -22,6 +22,8 @@
 
 ## Highlights
 
+- **AI-powered recommendations** — Claude analyzes your reading history, runs parallel Hardcover searches, and returns personalized picks with a one-sentence rationale for each
+- **AI reading list curation** — Claude organizes your Want to Read shelf into groups (series, author, genre) and can reorder them around a reading goal
 - **15+ database migrations** across a normalized PostgreSQL schema with row-level security on every table
 - **2.3M+ book catalog** sourced from the UCSD GoodReads dataset, processed with custom Node.js streaming pipelines
 - **Real-time direct messaging** via Supabase Realtime subscriptions with optimistic UI and read receipts
@@ -44,6 +46,8 @@
 
 ### Library & Discovery
 - Four shelves: Reading, Want to Read, Read, DNF — with sort, search, and half-star rating display
+- **AI reading list curation** — tap "Organize with AI" on the Want to Read shelf to group books by series, author, and genre; optionally provide a goal (e.g. "finish a series this month") to reprioritize the order
+- **AI book recommendations** — tap "Recommend something to me" in Search to get personalized picks powered by Claude, with a one-sentence rationale per book and a refresh button for new results
 - "More Like This" recommendations computed from genre overlap across the book catalog
 - Series pages grouping related books, synced from Hardcover
 - Author detail pages with full bibliography
@@ -119,6 +123,7 @@ All scripts use Node.js `readline` streaming to avoid loading multi-GB files int
 | Navigation | Expo Router (file-based, typed routes) |
 | Backend | Supabase (PostgreSQL + Auth + Realtime + Storage) |
 | Server logic | Supabase Edge Functions (Deno) |
+| AI | Anthropic Claude (claude-sonnet-4-6) via Supabase Edge Functions |
 | External API | Hardcover GraphQL (book search, series, reviews) |
 | Auth | Email/password + Apple Sign In |
 | Animations | react-native-reanimated (custom page-flip loader) |
@@ -137,9 +142,18 @@ All scripts use Node.js `readline` streaming to avoid loading multi-GB files int
 - Partial unique indexes (e.g. `goodreads_id WHERE goodreads_id IS NOT NULL`) to allow nullable unique columns
 - All client writes go through typed Supabase queries; the generated `types/database.ts` keeps query results fully typed end-to-end
 
+### AI Agents
+Two Claude-powered features run as Supabase Edge Functions, keeping both the Anthropic and Hardcover API keys server-side:
+
+- **Curator** (`supabase/functions/curator/`) — receives the user's Want to Read shelf, sends compact book data to Claude (title, author, series), and asks Claude to return a grouped structure as JSON. Claude outputs only book IDs and group labels; the function reconstructs full book objects from the data it already fetched before attaching cover URLs.
+
+- **Recommend** (`supabase/functions/recommend/`) — builds a taste profile from the user's rated books, runs 4 parallel Hardcover searches (randomized across genre and author queries each call for result variety), deduplicates and filters out books the user already owns, then makes a single Claude call to rank the candidates and generate a one-sentence rationale per pick. Searches are parallelized to keep the total response time under 10 seconds.
+
+Agent types, shared interfaces, and client callers live in `lib/agents/`. See `agents.md` for the full agent roadmap.
+
 ### API Security
-- The Hardcover API key lives exclusively in a Supabase Edge Function secret — never bundled into the app
-- The Edge Function acts as a typed proxy, normalizing GraphQL responses before returning `BookSearchResult[]` to the client
+- The Hardcover and Anthropic API keys live exclusively in Supabase Edge Function secrets — never bundled into the app
+- Edge Functions act as typed proxies, normalizing external API responses before returning typed results to the client
 
 ### Real-time
 - The DM chat screen subscribes to `postgres_changes` on the `messages` table filtered by `conversation_id`
@@ -175,12 +189,18 @@ app/
 lib/                    # Typed Supabase query modules
   auth, books, sessions, stats, activity, clubs, follows, messages,
   profile, notifications, userBooks, discover, liveActivity, …
+  agents/               # AI agent clients and shared types
+    curator.ts          # Reading list curation caller
+    recommend.ts        # Personalized recommendation caller
+    types.ts            # Shared agent types (CuratorResult, Recommendation, …)
 
 components/             # StarRating, RatingModal, BookLoader (custom page-flip animation)
 constants/              # Design tokens: fonts, spacing, radii, shadows, 9 color palettes
 supabase/
   migrations/           # 15 numbered SQL migration files
   functions/books/      # Edge Function: Hardcover proxy + push notifications
+  functions/curator/    # Edge Function: AI reading list curation (Claude)
+  functions/recommend/  # Edge Function: AI book recommendations (Claude)
 scripts/                # Node.js data import and enrichment pipelines
 modules/                # reading-live-activity (Swift + Expo native module)
 __tests__/              # Unit and integration tests
@@ -202,7 +222,12 @@ EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Set `HARDCOVER_API_KEY` as a Supabase Edge Function secret (never in `.env`).
+Set the following as Supabase Edge Function secrets (never in `.env`):
+
+```bash
+npx supabase secrets set HARDCOVER_API_KEY=your_hardcover_key
+npx supabase secrets set ANTHROPIC_API_KEY=your_anthropic_key
+```
 
 ### Run
 
