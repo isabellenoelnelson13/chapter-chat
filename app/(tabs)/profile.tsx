@@ -47,7 +47,7 @@ import {
 
 export default function ProfileScreen() {
   const { colors, themeName, setTheme } = useTheme();
-  const { session, signOut } = useAuth();
+  const { session, signOut, deleteAccount } = useAuth();
   const router = useRouter();
   const userId = session?.user.id ?? '';
 
@@ -345,6 +345,40 @@ export default function ProfileScreen() {
     await declineFollowRequest(requesterId, userId);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account, library, reading history, messages, and all other data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Your account and all data will be gone forever.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete My Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteAccount();
+                    } catch (e: any) {
+                      Alert.alert('Error', e?.message ?? 'Could not delete account. Please try again.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const handleAvatarPress = async () => {
     setUploadingAvatar(true);
     try {
@@ -603,6 +637,10 @@ export default function ProfileScreen() {
           <View style={styles.divider} />
           <TouchableOpacity style={styles.settingRow} onPress={signOut}>
             <Text style={styles.signOut}>Sign Out</Text>
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount}>
+            <Text style={[styles.signOut, { color: colors.error }]}>Delete Account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

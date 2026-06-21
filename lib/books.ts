@@ -76,18 +76,21 @@ export async function refreshBookGenres(bookId: string, title: string, author: s
 }
 
 export async function searchGoogleImages(query: string): Promise<string[]> {
-  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ?? '';
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Google Books image search error: ${res.status}`);
-  const json = await res.json();
-  return (json.items ?? [])
-    .map((item: any) => {
-      const links = item.volumeInfo?.imageLinks;
-      return links?.large ?? links?.medium ?? links?.thumbnail ?? null;
-    })
-    .filter(Boolean)
-    .map((url: string) => url.replace('http://', 'https://'));
+  const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/books`;
+  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? anonKey;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action: 'cover_search', query }),
+  });
+  if (!res.ok) throw new Error(`Cover search error: ${res.status}`);
+  return res.json();
 }
 
 export async function updateBookGenres(bookId: string, genres: string[]): Promise<void> {

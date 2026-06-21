@@ -23,8 +23,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
-import { getShelf, updateProgressPercent, type UserBookWithBook } from '@/lib/userBooks';
+import { getShelf, updateProgressPercent, moveShelf, type UserBookWithBook } from '@/lib/userBooks';
 import { createSession } from '@/lib/sessions';
+import { createEvent } from '@/lib/activity';
 import { useTheme } from '@/lib/theme';
 import { Fonts, Spacing, Radius, Shadow } from '@/constants/theme';
 
@@ -129,11 +130,27 @@ export default function ManualSessionScreen() {
       if (isPercent && !isReadBook) {
         await updateProgressPercent(selectedBook.id, ep);
       }
+
+      const isComplete = isPercent ? ep >= 100 : (pageCount != null && ep >= pageCount);
+      if (isComplete && selectedBook.shelf !== 'read') {
+        await moveShelf(selectedBook.id, 'read');
+        await createEvent(userId, 'finished_book', selectedBook.book_id, { rating: null, review_snippet: null });
+      }
+
+      const destBookId = selectedBook.book_id;
+      const onDone = () => {
+        if (isComplete) {
+          router.replace(`/book/${destBookId}?rate=1` as any);
+        } else {
+          router.back();
+        }
+      };
+
       successOpacity.value = withSequence(
         withTiming(1, { duration: 250 }),
         withTiming(1, { duration: 800 }),
         withTiming(0, { duration: 300 }, (finished) => {
-          if (finished) runOnJS(router.back)();
+          if (finished) runOnJS(onDone)();
         })
       );
       successScale.value = withSequence(

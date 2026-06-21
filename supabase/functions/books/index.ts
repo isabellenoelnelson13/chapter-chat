@@ -306,6 +306,22 @@ serve(async (req) => {
       books = Array.from(byPosition.values())
         .map((v) => v.result)
         .sort((a, b) => (a.series_position ?? 999) - (b.series_position ?? 999));
+    } else if (action === 'cover_search') {
+      const googleKey = Deno.env.get('GOOGLE_BOOKS_API_KEY') ?? '';
+      const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(String(query ?? ''))}&maxResults=20${googleKey ? `&key=${googleKey}` : ''}`;
+      const googleRes = await fetch(googleUrl);
+      if (!googleRes.ok) throw new Error(`Google Books error: ${googleRes.status}`);
+      const googleJson = await googleRes.json();
+      const coverUrls = (googleJson.items ?? [])
+        .map((item: any) => {
+          const links = item.volumeInfo?.imageLinks;
+          return links?.large ?? links?.medium ?? links?.thumbnail ?? null;
+        })
+        .filter(Boolean)
+        .map((u: string) => u.replace('http://', 'https://'));
+      return new Response(JSON.stringify(coverUrls), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     } else {
       return new Response(
         JSON.stringify({ error: `Unknown action: ${action}` }),

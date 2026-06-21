@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -37,7 +37,8 @@ export default function BookDetailScreen() {
   const { colors } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
-  const { bookId } = useLocalSearchParams<{ bookId: string }>();
+  const { bookId, rate } = useLocalSearchParams<{ bookId: string; rate?: string }>();
+  const rateOnLoad = useRef(rate === '1');
 
   const [book, setBook] = useState<BookDetails | null>(null);
   const [userBook, setUserBook] = useState<UserBookWithBook | null>(null);
@@ -124,6 +125,14 @@ export default function BookDetailScreen() {
       .then(setReadingSessions)
       .catch(() => {});
   }, [bookId, userId]);
+
+  // Auto-open rating modal when navigated here after finishing a session
+  useEffect(() => {
+    if (!loading && rateOnLoad.current && userBook) {
+      setRatingModalVisible(true);
+      rateOnLoad.current = false;
+    }
+  }, [loading, userBook]);
 
   const breakdownTotal = useMemo(
     () => Object.values(ratingBreakdown).reduce((s, n) => s + n, 0),
@@ -569,6 +578,7 @@ export default function BookDetailScreen() {
             await addToShelf(userId, bookId, s);
             const updated = await getUserBook(userId, bookId);
             setUserBook(updated);
+            if (s === 'read') setRatingModalVisible(true);
           }
         } catch {
           Alert.alert('Error', 'Could not update book. Please try again.');
@@ -603,6 +613,7 @@ export default function BookDetailScreen() {
             rating: refreshed?.rating ?? null,
             review_snippet: refreshed?.review ? refreshed.review.slice(0, 200) : null,
           });
+          setRatingModalVisible(true);
         } else if (newShelf === 'want' || newShelf === 'dnf') {
           await createEvent(userId, 'added_to_shelf', bookId, { shelf: newShelf });
         }
